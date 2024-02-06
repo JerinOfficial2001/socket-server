@@ -19,7 +19,7 @@ httpServer.listen(PORT, () => {
 });
 const io = new Server(httpServer, {
   cors: {
-    origin: "https://next-api-ruby.vercel.app",
+    origin: ["https://next-api-ruby.vercel.app", "http://localhost:3001"],
   },
 });
 io.on("connection", (socket) => {
