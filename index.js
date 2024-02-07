@@ -21,6 +21,8 @@ const connectedClients = [];
 const io = new Server(httpServer, {
   cors: {
     origin: ["https://next-api-ruby.vercel.app", "http://localhost:3001"],
+    methods: ["GET", "POST"], // Specify allowed methods
+    allowedHeaders: ["Content-Type", "Authorization"],
   },
 });
 io.on("connection", (socket) => {
