@@ -11,6 +11,6 @@
   ],
   "env": {
     "MONGO_DB": "mongodb+srv://jerin_25_01:jerin2001@cluster0.c0nwait.mongodb.net/?retryWrites=true&w=majority",
-    "PORT": 4000
+    "PORT": "4000"
   }
 }
