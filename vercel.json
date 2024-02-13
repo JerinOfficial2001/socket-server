@@ -7,7 +7,7 @@
     }
   ],
   "routes": [
-    { "handle": "index.js", "src": "/(.*)", "methods": ["GET", "POST"] }
+    { "src": "/(.*)", "dest": "/index.js" }
   ],
   "env": {
     "MONGO_DB": "mongodb+srv://jerin_25_01:jerin2001@cluster0.c0nwait.mongodb.net/?retryWrites=true&w=majority",
