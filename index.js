@@ -10,11 +10,8 @@ app.use(cors());
 const { Message } = require("./model/message");
 require("dotenv").config();
 const db = process.env.MONGO_DB;
-const sessions = new Map();
-
 mongoose.connect(db).then(() => {
   console.log("DB Connected");
-  sessions.set("test", 1);
 });
 const options = [
   cors({
@@ -31,33 +28,28 @@ httpServer.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
 var connectedClients = [];
-const io = new Server(
-  httpServer
-  // , {
-  // cors: {
-  //   origin: [
-  //     "https://next-api-ruby.vercel.app",
-  //     "http://localhost:3001",
-  //     "http://localhost:3000",
-  //   ],
-  //   methods: ["GET", "POST"], // Specify allowed methods
-  //   allowedHeaders: ["Content-Type", "Authorization"],
-  // },
-  // }
-);
-// Set up CORS headers for Express routes
-app.use((req, res, next) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader(
-    "Access-Control-Allow-Methods",
-    "OPTIONS, GET, POST, PUT, PATCH, DELETE"
-  );
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-  next();
+const io = new Server(httpServer, {
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"], // Specify allowed methods
+    allowedHeaders: ["Content-Type", "Authorization"],
+  },
 });
-console.log(sessions);
+const sessions = new Map();
+// Set up CORS headers for Express routes
+// app.use((req, res, next) => {
+//   res.setHeader("Access-Control-Allow-Origin", "*");
+//   res.setHeader(
+//     "Access-Control-Allow-Methods",
+//     "OPTIONS, GET, POST, PUT, PATCH, DELETE"
+//   );
+//   res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+//   next();
+// });
+
 io.on("connection", (socket) => {
   socket.on("authenticate", (sessionId) => {
+    console.log(sessionId);
     if (sessionId) {
       // Check if the session ID exists in the session map
       if (sessions.has(sessionId)) {
