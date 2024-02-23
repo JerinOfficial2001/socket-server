@@ -32,12 +32,13 @@ app.get("/", (req, res) => {
 });
 io.on("connection", (socket) => {
   console.log("User connected");
-  socket.on("disconnect", () => {
-    console.log("User Disconnected");
-  });
+
   socket.on("message", async (obj) => {
     await Message.create(obj);
     const allData = await Message.find({});
     io.emit("message", allData);
+  });
+  socket.on("disconnect", () => {
+    console.log("User Disconnected");
   });
 });
