@@ -18,7 +18,15 @@ const PORT = process.env.PORT || 4000;
 httpServer.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
-const io = new Server(httpServer);
+const io = new Server(httpServer, {
+  path: "/socket",
+  wsEngine: ["ws", "wss"],
+  transports: ["websocket", "polling"],
+  cors: {
+    origin: "*",
+  },
+  allowEIO3: true,
+});
 app.get("/", (req, res) => {
   res.write(`<h1>Socket Server is running on:${PORT}</h1>`);
 });
