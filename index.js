@@ -20,12 +20,12 @@ httpServer.listen(PORT, () => {
 });
 const io = new Server(httpServer, {
   path: "/socket",
-  wsEngine: ["ws", "wss"],
+  // wsEngine: ["ws", "wss"],
   transports: ["websocket", "polling"],
   cors: {
     origin: "*",
   },
-  allowEIO3: true,
+  // allowEIO3: true,
 });
 app.get("/", (req, res) => {
   res.write(`<h1>Socket Server is running on:${PORT}</h1>`);
