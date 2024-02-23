@@ -20,7 +20,7 @@ httpServer.listen(PORT, () => {
 });
 const io = new Server(httpServer, {
   path: "/socket",
-  wsEngine: ["ws", "wss"],
+  // wsEngine: ["ws", "wss"],
   transports: ["websocket", "polling"],
   cors: {
     origin: "*",
