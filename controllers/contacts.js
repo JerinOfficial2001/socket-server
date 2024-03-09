@@ -1,4 +1,6 @@
+const { Chats } = require("../model/chats");
 const { Contacts } = require("../model/contacts");
+const { Message } = require("../model/message");
 
 exports.addContacts = async (req, res, next) => {
   try {
@@ -44,21 +46,25 @@ exports.deleteContacts = async (req, res, next) => {
     const result = await Contacts.findOne({ Contact_id });
 
     if (result) {
-      const chatObj = await Chats.find({
-        sender: sender_id,
-        receiver: receiver_id,
-      });
-      if (chatObj) {
-        const msgObj = await Message.find({ chatID: chatObj[0]._id });
+      const response = await Chats.find({});
+      const chatIDs = [sender_id, receiver_id];
+
+      const filteredChats = response.find((i) =>
+        chatIDs.every((id) => i.sender == id || i.receiver == id)
+      );
+      if (filteredChats) {
+        const msgObj = await Message.find({ chatID: filteredChats._id });
         if (msgObj) {
           const deletedContactObj = await Contacts.findByIdAndDelete(
             result._id
           );
           if (deletedContactObj) {
-            const deletedChat = await Chats.findByIdAndDelete(chatObj[0]._id);
+            const deletedChat = await Chats.findByIdAndDelete(
+              filteredChats._id
+            );
             if (deletedChat) {
               const deletedMsg = await Message.deleteMany({
-                chatID: chatObj[0]._id,
+                chatID: filteredChats._id,
               });
 
               if (deletedMsg) {
@@ -84,7 +90,9 @@ exports.deleteContacts = async (req, res, next) => {
             receiver_id
           );
           if (deletedContactObj) {
-            const deletedChat = await Chats.findByIdAndDelete(chatObj[0]._id);
+            const deletedChat = await Chats.findByIdAndDelete(
+              filteredChats._id
+            );
             if (deletedChat) {
               res
                 .status(200)
@@ -99,9 +107,11 @@ exports.deleteContacts = async (req, res, next) => {
           }
         }
       } else {
-        const deletedContactObj = await Contacts.findByIdAndDelete(receiver_id);
+        const deletedContactObj = await Contacts.findByIdAndDelete(result._id);
         if (deletedContactObj) {
           res.status(200).json({ status: "ok", message: "Contact Deleted" });
+        } else {
+          res.send({ status: "error", message: "Contact not deleted" });
         }
       }
     } else {
