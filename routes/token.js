@@ -12,12 +12,13 @@ const {
 const route = express.Router();
 
 route.get("/token", getToken);
-route.post("/register", addToken);
-route.delete("/register", deleteToken);
 route.get("/tokenID", getTokenID);
-route.post("/tokenID", addTokenID);
-route.delete("/tokenID", deleteTokenID);
+route.post("/token", addToken);
 route.get("/token", getTokenByID);
-route.post("/token", authByTokenID);
+route.delete("/tokenID", deleteTokenID);
+
+route.delete("/logout", deleteToken);
+route.post("/tokenID", addTokenID);
+route.post("/getTokenByID", authByTokenID);
 
 module.exports = route;
