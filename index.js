@@ -18,6 +18,7 @@ mongoose.connect(db).then(() => {
 const Messages = require("./routes/message");
 const Auth = require("./routes/users");
 const Token = require("./routes/token");
+const Contacts = require("./routes/contacts");
 
 const PORT = process.env.PORT || 4000;
 httpServer.listen(PORT, () => {
@@ -79,3 +80,4 @@ io.on("connection", (socket) => {
 app.use("/api", Messages);
 app.use("/api/auth", Auth);
 app.use("/api/auth", Token);
+app.use("/api", Contacts);
