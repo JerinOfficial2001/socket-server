@@ -8,6 +8,7 @@ const {
   getTokenID,
   addTokenID,
   deleteTokenID,
+  logout,
 } = require("../controllers/token");
 const route = express.Router();
 
@@ -17,7 +18,7 @@ route.post("/token", addToken);
 route.get("/token", getTokenByID);
 route.delete("/tokenID", deleteTokenID);
 
-route.delete("/logout", deleteToken);
+route.post("/logout", logout);
 route.post("/tokenID", addTokenID);
 route.post("/getTokenByID", authByTokenID);
 

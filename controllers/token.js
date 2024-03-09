@@ -102,29 +102,58 @@ exports.authByTokenID = async (req, res, next) => {
   try {
     const { token, tokenArr } = req.body;
     const filteredTokenID = tokenArr.filter((elem) => elem.token == token);
-    if (filteredTokenID) {
-      const response = await fetch(
-        "https://socket-server-fhra.onrender.com/api/auth/tokenID",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-            "Access-Control-Allow-Origin": "*",
-          },
-          body: JSON.stringify({ tokenID: filteredTokenID[0]._id }),
-        }
-      ).then((res) => res.json());
-      if (response) {
-        res.status(200).json({ status: "ok", data: response });
-      } else {
-        res.status(200).json({ status: "ok", data: "auth failed" });
-      }
-    } else {
-      res.status(200).json({ status: "error", data: "authentication failed" });
-    }
+    res.send(filteredTokenID);
+    // if (filteredTokenID) {
+    //   const response = await fetch(
+    //     "https://socket-server-fhra.onrender.com/api/auth/tokenID",
+    //     {
+    //       method: "POST",
+    //       headers: {
+    //         "Content-Type": "application/json",
+    //         Accept: "application/json",
+    //         "Access-Control-Allow-Origin": "*",
+    //       },
+    //       body: JSON.stringify({ tokenID: filteredTokenID[0]._id }),
+    //     }
+    //   ).then((res) => res.json());
+    //   if (response) {
+    //     res.status(200).json({ status: "ok", data: response });
+    //   } else {
+    //     res.status(200).json({ status: "ok", data: "auth failed" });
+    //   }
+    // } else {
+    //   res.status(200).json({ status: "error", data: "authentication failed" });
+    // }
   } catch (error) {
     console.log(error);
     res.status(500).send(error);
+  }
+};
+exports.logout = async (req, res, next) => {
+  const { token } = req.body;
+  try {
+    const particularToken = await Token.findOne({ token });
+    if (particularToken) {
+      const tokenID = await TokenID.findOne({ tokenID: particularToken._id });
+      if (tokenID) {
+        const result = await Token.findByIdAndDelete(particularToken._id);
+        const resultTokenID = await TokenID.findByIdAndDelete(tokenID._id);
+        if (result && resultTokenID) {
+          res
+            .status(200)
+            .json({ status: "ok", message: "Logged out successfully" });
+        } else {
+          res
+            .status(200)
+            .json({ status: "error", message: "Something went wrong" });
+        }
+      } else {
+        res.status(200).json({ status: "ok", message: "Logged out" });
+      }
+    } else {
+      res.status(200).json({ status: "error", message: "Failed" });
+    }
+  } catch (error) {
+    next(error);
   }
 };
