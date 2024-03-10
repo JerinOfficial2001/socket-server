@@ -129,31 +129,3 @@ exports.authByTokenID = async (req, res, next) => {
     res.status(500).send(error);
   }
 };
-exports.logout = async (req, res, next) => {
-  const { token } = req.body;
-  try {
-    const particularToken = await Token.findOne({ token });
-    if (particularToken) {
-      const tokenID = await TokenID.findOne({ tokenID: particularToken._id });
-      if (tokenID) {
-        const result = await Token.findByIdAndDelete(particularToken._id);
-        const resultTokenID = await TokenID.findByIdAndDelete(tokenID._id);
-        if (result && resultTokenID) {
-          res
-            .status(200)
-            .json({ status: "ok", message: "Logged out successfully" });
-        } else {
-          res
-            .status(200)
-            .json({ status: "error", message: "Something went wrong" });
-        }
-      } else {
-        res.status(200).json({ status: "ok", message: "Logged out" });
-      }
-    } else {
-      res.status(200).json({ status: "error", message: "Failed" });
-    }
-  } catch (error) {
-    next(error);
-  }
-};

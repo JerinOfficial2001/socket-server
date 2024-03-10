@@ -17,8 +17,6 @@ route.get("/tokenID", getTokenID);
 route.post("/token", addToken);
 route.get("/token", getTokenByID);
 route.delete("/tokenID", deleteTokenID);
-
-route.post("/logout", logout);
 route.post("/tokenID", addTokenID);
 route.post("/getTokenByID", authByTokenID);
 
