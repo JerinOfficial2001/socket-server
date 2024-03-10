@@ -82,7 +82,7 @@ exports.userData = async (req, res, next) => {
       .json({ status: "error", data: "Unauthorized - Invalid Token" });
   }
 };
-exports.logout = async () => {
+exports.logout = async (req, res, next) => {
   try {
     const { token, name } = req.body;
     if (token) {
