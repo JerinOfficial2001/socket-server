@@ -14,11 +14,6 @@ const db = process.env.MONGO_DB;
 mongoose.connect(db).then(() => {
   console.log("DB Connected");
 });
-//*Routes
-const Messages = require("./routes/message");
-const Auth = require("./routes/users");
-const Token = require("./routes/token");
-const Contacts = require("./routes/contacts");
 
 const PORT = process.env.PORT || 4000;
 httpServer.listen(PORT, () => {
@@ -34,7 +29,7 @@ const io = new Server(httpServer, {
   // allowEIO3: true,
 });
 app.get("/", (req, res) => {
-  res.write(`<h1>Socket Server is running on:${PORT}</h1>`);
+  res.json(`Socket Server is running on:${PORT}`);
 });
 let activeUsers = [];
 io.on("connection", (socket) => {
@@ -76,8 +71,3 @@ io.on("connection", (socket) => {
     io.emit("user_connected", activeUsers);
   });
 });
-
-app.use("/api", Messages);
-app.use("/api/auth", Auth);
-app.use("/api/auth", Token);
-app.use("/api", Contacts);
