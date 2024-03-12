@@ -33,6 +33,7 @@ app.get("/", (req, res) => {
 });
 let activeUsers = [];
 io.on("connection", (socket) => {
+  io.emit("getNotification", { status: "ok" });
   console.log("User connected");
   socket.on("set_user_id", (userId) => {
     socket.userId = userId;
