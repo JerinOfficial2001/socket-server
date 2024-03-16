@@ -20,18 +20,20 @@ httpServer.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
 const io = new Server(httpServer, {
-  path: "/socket",
-  // wsEngine: ["ws", "wss"],
-  transports: ["polling"],
-  cors: {
-    origin: "*",
-  },
+  // path: "/socket",
+  // // wsEngine: ["ws", "wss"],
+  // transports: ["polling"],
+  // cors: {
+  //   origin: "*",
+  // },
   // allowEIO3: true,
 });
 app.get("/", (req, res) => {
   res.json(`Socket Server is running on:${PORT}`);
 });
 let activeUsers = [];
+let watchingUsers = [];
+let typingUsers = [];
 io.on("connection", (socket) => {
   io.emit("getNotification", { status: "ok" });
   console.log("User connected");
@@ -45,14 +47,15 @@ io.on("connection", (socket) => {
     io.emit("receivedMsg", obj);
   });
   socket.on("disconnect", (data) => {
-    console.log(socket.id);
     console.log("User Disconnected");
     const disconnectedUserId = socket.userId; // Assuming socket.id is the user ID
     const currentArr = activeUsers.filter(
       (user) => user.id !== disconnectedUserId
     );
-    console.log(currentArr);
+
     activeUsers = currentArr;
+    io.emit("user_connected", activeUsers);
+    console.log(activeUsers, "activeUsers");
   });
   socket.on("user_connected", (obj) => {
     const alreadyActiveIndex = activeUsers.findIndex(
@@ -65,10 +68,57 @@ io.on("connection", (socket) => {
     } else {
       // Add user to the list with status "online"
       obj.status = "online";
-      obj.socket = socket.id;
+      obj.socket = socket.userId;
       activeUsers.push(obj);
     }
 
     io.emit("user_connected", activeUsers);
+  });
+
+  socket.on("user_watching", (obj) => {
+    const alreadyActiveIndex = watchingUsers.findIndex((user) => user.id == id);
+
+    if (alreadyActiveIndex !== -1) {
+      // User is already active, update status to "online"
+      watchingUsers[alreadyActiveIndex].status = true;
+    } else {
+      // Add user to the list with status "online"
+      obj.status = true;
+      obj.socket = socket.userId;
+      watchingUsers.push(obj);
+    }
+
+    io.emit("user_watching", watchingUsers);
+    console.log(watchingUsers, "user_watching");
+  });
+  socket.on("user_watchout", (id) => {
+    const currentArr = watchingUsers.filter((user) => user.id !== id);
+
+    watchingUsers = currentArr;
+    io.emit("user_watching", watchingUsers);
+    console.log(watchingUsers, "user_watching");
+  });
+  socket.on("user_typing", (obj) => {
+    const alreadyActiveIndex = typingUsers.findIndex((user) => user.id == id);
+
+    if (alreadyActiveIndex !== -1) {
+      // User is already active, update status to "online"
+      typingUsers[alreadyActiveIndex].status = true;
+    } else {
+      // Add user to the list with status "online"
+      obj.status = true;
+      obj.socket = socket.userId;
+      typingUsers.push(obj);
+    }
+
+    io.emit("user_typing", typingUsers);
+    console.log(typingUsers, "user_typing");
+  });
+  socket.on("user_typed", (id) => {
+    const currentArr = typingUsers.filter((user) => user.id !== id);
+
+    typingUsers = currentArr;
+    io.emit("user_typing", typingUsers);
+    console.log(typingUsers, "user_typing");
   });
 });
