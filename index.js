@@ -46,7 +46,7 @@ io.on("connection", (socket) => {
     io.emit("message", allData);
     io.emit("receivedMsg", obj);
   });
-  socket.on("disconnect", (data) => {
+  socket.on("disconnect", () => {
     console.log("User Disconnected");
     const disconnectedUserId = socket.userId; // Assuming socket.id is the user ID
     const currentArr = activeUsers.filter(
@@ -71,12 +71,14 @@ io.on("connection", (socket) => {
       obj.socket = socket.userId;
       activeUsers.push(obj);
     }
-
+    console.log("user_connected", activeUsers);
     io.emit("user_connected", activeUsers);
   });
 
   socket.on("user_watching", (obj) => {
-    const alreadyActiveIndex = watchingUsers.findIndex((user) => user.id == id);
+    const alreadyActiveIndex = watchingUsers.findIndex(
+      (user) => user.id == obj.id
+    );
 
     if (alreadyActiveIndex !== -1) {
       // User is already active, update status to "online"
@@ -99,7 +101,9 @@ io.on("connection", (socket) => {
     console.log(watchingUsers, "user_watching");
   });
   socket.on("user_typing", (obj) => {
-    const alreadyActiveIndex = typingUsers.findIndex((user) => user.id == id);
+    const alreadyActiveIndex = typingUsers.findIndex(
+      (user) => user.id == obj.id
+    );
 
     if (alreadyActiveIndex !== -1) {
       // User is already active, update status to "online"
