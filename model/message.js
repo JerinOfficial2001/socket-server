@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const messageSchema = new mongoose.Schema(
+const WC_MessageSchema = new mongoose.Schema(
   {
     chatID: String,
     sender: String,
@@ -10,5 +10,5 @@ const messageSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-const Message = mongoose.model("Message", messageSchema);
-exports.Message = Message;
+const WC_Message = mongoose.model("WC_Message", WC_MessageSchema);
+exports.WC_Message = WC_Message;

@@ -6,9 +6,9 @@ const { Server } = require("socket.io");
 const app = express();
 const httpServer = createServer(app);
 const cors = require("cors");
+const { WC_Message } = require("./model/message");
 app.use(cors());
 app.use(express.json());
-const { Message } = require("./model/message");
 require("dotenv").config();
 const db = process.env.MONGO_DB;
 mongoose.connect(db).then(() => {
@@ -41,8 +41,8 @@ io.on("connection", (socket) => {
     socket.userId = userId;
   });
   socket.on("message", async (obj) => {
-    await Message.create(obj);
-    const allData = await Message.find({});
+    await WC_Message.create(obj);
+    const allData = await WC_Message.find({});
     io.emit("message", allData);
     io.emit("receivedMsg", obj);
   });
