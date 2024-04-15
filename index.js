@@ -22,10 +22,10 @@ httpServer.listen(PORT, () => {
 const io = new Server(httpServer, {
   // path: "/socket",
   // // wsEngine: ["ws", "wss"],
-  // transports: ["polling"],
-  // cors: {
-  //   origin: "*",
-  // },
+  transports: ["polling"],
+  cors: {
+    origin: "*",
+  },
   // allowEIO3: true,
 });
 app.get("/", (req, res) => {
