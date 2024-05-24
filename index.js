@@ -36,14 +36,15 @@ let watchingUsers = [];
 let typingUsers = [];
 io.on("connection", (socket) => {
   socket.on("join-room", (roomId) => {
-    socket.join(roomId);
-    socket.to(roomId).emit("user-connected", socket.id);
-
+    console.log(roomId, "roomId");
+    socket.join(roomId.roomID);
+    socket.to(roomId.roomID).emit("user-connected", roomId.id);
     socket.on("disconnect", () => {
-      socket.to(roomId).emit("user-disconnected", socket.id);
+      console.log("roomIdDisconnect");
+      socket.to(roomId.roomID).emit("user-disconnected", roomId.id);
     });
-
     socket.on("signal", (data) => {
+      console.log(data, "signal");
       io.to(data.target).emit("signal", data);
     });
   });
