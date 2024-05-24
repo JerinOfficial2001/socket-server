@@ -35,6 +35,19 @@ let activeUsers = [];
 let watchingUsers = [];
 let typingUsers = [];
 io.on("connection", (socket) => {
+  socket.on("join-room", (roomId) => {
+    socket.join(roomId);
+    socket.to(roomId).emit("user-connected", socket.id);
+
+    socket.on("disconnect", () => {
+      socket.to(roomId).emit("user-disconnected", socket.id);
+    });
+
+    socket.on("signal", (data) => {
+      io.to(data.target).emit("signal", data);
+    });
+  });
+
   io.emit("getNotification", { status: "ok" });
   console.log("User connected");
   socket.on("set_user_id", (userId) => {
