@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const express = require("express");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
+const { v4: uuidv4 } = require("uuid");
 
 const app = express();
 const httpServer = createServer(app);
@@ -34,7 +35,13 @@ app.get("/", (req, res) => {
 let activeUsers = [];
 let watchingUsers = [];
 let typingUsers = [];
-const users = {};
+const rooms = {};
+
+app.get("/create-room", (req, res) => {
+  const roomID = uuidv4();
+  rooms[roomID] = [];
+  res.json({ roomID });
+});
 io.on("connection", (socket) => {
   //*Solo Vchat
   socket.emit("me", socket.id);
@@ -52,13 +59,20 @@ io.on("connection", (socket) => {
   });
   //*Group Vchat
 
-  socket.on("join room", () => {
-    if (users[socket.id]) {
-      return;
+  socket.on("create room", (callback) => {
+    const roomID = uuidv4();
+    rooms[roomID] = [];
+    callback(roomID);
+  });
+
+  socket.on("join room", ({ roomID }) => {
+    if (rooms[roomID]) {
+      rooms[roomID].push(socket.id);
+      const usersInRoom = rooms[roomID].filter((id) => id !== socket.id);
+      socket.emit("all users", usersInRoom);
+    } else {
+      socket.emit("error", "Room not found");
     }
-    users[socket.id] = socket.id;
-    const usersInRoom = Object.keys(users).filter((id) => id !== socket.id);
-    socket.emit("all users", usersInRoom);
   });
 
   socket.on("sending signal", (payload) => {
@@ -76,7 +90,9 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    delete users[socket.id];
+    for (const roomID in rooms) {
+      rooms[roomID] = rooms[roomID].filter((id) => id !== socket.id);
+    }
   });
   //*JersApp
   io.emit("getNotification", { status: "ok" });
