@@ -35,6 +35,20 @@ let activeUsers = [];
 let watchingUsers = [];
 let typingUsers = [];
 io.on("connection", (socket) => {
+  //*Solo Vchat
+  socket.on("join-room", (roomId) => {
+    socket.join(roomId);
+    socket.to(roomId).emit("user-connected", socket.id);
+
+    socket.on("disconnect", () => {
+      socket.to(roomId).emit("user-disconnected", socket.id);
+    });
+
+    socket.on("signal", (data) => {
+      io.to(data.target).emit("signal", data);
+    });
+  });
+  //*Group Vchat
   socket.emit("me", socket.id);
 
   socket.on("disconnect", () => {
@@ -73,7 +87,7 @@ io.on("connection", (socket) => {
   socket.on("disconnected", () => {
     console.log("Client disconnected");
   });
-
+  //*JersApp
   io.emit("getNotification", { status: "ok" });
   console.log("User connected");
   socket.on("set_user_id", (userId) => {
