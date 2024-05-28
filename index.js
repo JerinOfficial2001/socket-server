@@ -34,6 +34,7 @@ app.get("/", (req, res) => {
 let activeUsers = [];
 let watchingUsers = [];
 let typingUsers = [];
+const users = {};
 io.on("connection", (socket) => {
   //*Solo Vchat
   socket.emit("me", socket.id);
@@ -51,9 +52,13 @@ io.on("connection", (socket) => {
   });
   //*Group Vchat
 
-  socket.on("join room", (roomID) => {
-    socket.join(roomID);
-    socket.broadcast.to(roomID).emit("user joined", socket.id);
+  socket.on("join room", () => {
+    if (users[socket.id]) {
+      return;
+    }
+    users[socket.id] = socket.id;
+    const usersInRoom = Object.keys(users).filter((id) => id !== socket.id);
+    socket.emit("all users", usersInRoom);
   });
 
   socket.on("sending signal", (payload) => {
@@ -71,7 +76,7 @@ io.on("connection", (socket) => {
   });
 
   socket.on("disconnect", () => {
-    console.log("Client disconnected");
+    delete users[socket.id];
   });
   //*JersApp
   io.emit("getNotification", { status: "ok" });
