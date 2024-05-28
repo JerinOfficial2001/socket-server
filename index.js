@@ -55,20 +55,12 @@ io.on("connection", (socket) => {
     socket.broadcast.emit("callEnded");
   });
 
-  socket.on("callUser", (data) => {
-    io.to(data.userToCall).emit("callUser", {
-      signal: data.signalData,
-      from: data.from,
-      name: data.name,
-    });
-  });
-
-  socket.on("answerCall", (data) => {
-    io.to(data.to).emit("callAccepted", data.signal);
-  });
   socket.on("join room", (roomID) => {
     socket.join(roomID);
-    socket.broadcast.to(roomID).emit("user joined", socket.id);
+    socket.broadcast.to(roomID).emit("user joined", {
+      signal: null,
+      callerID: socket.id,
+    });
   });
 
   socket.on("sending signal", (payload) => {
@@ -83,9 +75,6 @@ io.on("connection", (socket) => {
       signal: payload.signal,
       id: socket.id,
     });
-  });
-  socket.on("disconnected", () => {
-    console.log("Client disconnected");
   });
   //*JersApp
   io.emit("getNotification", { status: "ok" });
