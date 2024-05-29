@@ -36,7 +36,6 @@ let activeUsers = [];
 let watchingUsers = [];
 let typingUsers = [];
 const rooms = {};
-const SocketID = uuidv4();
 
 app.get("/create-room", (req, res) => {
   const roomID = uuidv4();
@@ -68,8 +67,8 @@ io.on("connection", (socket) => {
 
   socket.on("join room", ({ roomID }) => {
     if (rooms[roomID]) {
-      rooms[roomID].push(SocketID);
-      const usersInRoom = rooms[roomID].filter((id) => id !== SocketID);
+      rooms[roomID].push(socket.id);
+      const usersInRoom = rooms[roomID].filter((id) => id !== socket.id);
       socket.emit("all users", usersInRoom);
     } else {
       socket.emit("error", "Room not found");
@@ -86,13 +85,13 @@ io.on("connection", (socket) => {
   socket.on("returning signal", (payload) => {
     io.to(payload.callerID).emit("receiving returned signal", {
       signal: payload.signal,
-      id: SocketID,
+      id: socket.id,
     });
   });
 
   socket.on("disconnect", () => {
     for (const roomID in rooms) {
-      rooms[roomID] = rooms[roomID].filter((id) => id !== SocketID);
+      rooms[roomID] = rooms[roomID].filter((id) => id !== socket.id);
     }
   });
   //*JersApp
