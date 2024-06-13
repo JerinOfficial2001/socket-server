@@ -57,7 +57,8 @@ io.on("connection", (socket) => {
       io.to(data.target).emit("signal", data);
     });
   });
-  //* Group Vchat
+  //*Group Vchat
+
   socket.on("create room", (callback) => {
     const roomID = uuidv4();
     rooms[roomID] = [];
@@ -66,8 +67,8 @@ io.on("connection", (socket) => {
 
   socket.on("join room", ({ roomID }) => {
     if (rooms[roomID]) {
-      rooms[roomID].push(socket.userId);
-      const usersInRoom = rooms[roomID].filter((id) => id !== socket.userId);
+      rooms[roomID].push(socket.id);
+      const usersInRoom = rooms[roomID].filter((id) => id !== socket.id);
       socket.emit("all users", usersInRoom);
     } else {
       socket.emit("error", "Room not found");
@@ -77,26 +78,21 @@ io.on("connection", (socket) => {
   socket.on("sending signal", (payload) => {
     io.to(payload.userToSignal).emit("user joined", {
       signal: payload.signal,
-      callerID: socket.userId,
+      callerID: payload.callerID,
     });
   });
 
   socket.on("returning signal", (payload) => {
     io.to(payload.callerID).emit("receiving returned signal", {
       signal: payload.signal,
-      id: socket.userId,
+      id: socket.id,
     });
   });
 
   socket.on("disconnect", () => {
     for (const roomID in rooms) {
-      rooms[roomID] = rooms[roomID].filter((id) => id !== socket.userId);
+      rooms[roomID] = rooms[roomID].filter((id) => id !== socket.id);
     }
-
-    const disconnectedUserId = socket.userId;
-    activeUsers = activeUsers.filter((user) => user.id !== disconnectedUserId);
-    io.emit("user_connected", activeUsers);
-    console.log(activeUsers, "activeUsers");
   });
   //*JersApp
   io.emit("getNotification", { status: "ok" });
