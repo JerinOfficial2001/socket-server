@@ -45,17 +45,21 @@ app.get("/create-room", (req, res) => {
 io.on("connection", (socket) => {
   //*Solo Vchat
   socket.emit("me", socket.id);
-  socket.on("join-room", (roomId) => {
-    socket.join(roomId);
-    socket.to(roomId).emit("user-connected", socket.id);
 
-    socket.on("disconnect", () => {
-      socket.to(roomId).emit("user-disconnected", socket.id);
-    });
+  socket.on("disconnect", () => {
+    console.log("Client disconnected");
+  });
 
-    socket.on("signal", (data) => {
-      io.to(data.target).emit("signal", data);
+  socket.on("callUser", (data) => {
+    io.to(data.userToCall).emit("callUser", {
+      from: data.from,
+      signal: data.signalData,
+      name: data.name,
     });
+  });
+
+  socket.on("answerCall", (data) => {
+    io.to(data.to).emit("callAccepted", data.signal);
   });
   //*Group Vchat
 
