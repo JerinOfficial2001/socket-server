@@ -29,6 +29,15 @@ const io = new Server(httpServer, {
   },
   // allowEIO3: true,
 });
+const ioVchat = new Server(httpServer, {
+  path: "/vchat",
+  // // wsEngine: ["ws", "wss"],
+  transports: ["polling"],
+  cors: {
+    origin: "*",
+  },
+  // allowEIO3: true,
+});
 app.get("/", (req, res) => {
   res.json(`Socket Server is running on:${PORT}`);
 });
@@ -42,25 +51,8 @@ app.get("/create-room", (req, res) => {
   rooms[roomID] = [];
   res.json({ roomID });
 });
+
 io.on("connection", (socket) => {
-  //*Solo Vchat
-  socket.emit("me", socket.id);
-
-  socket.on("disconnect", () => {
-    console.log("Client disconnected");
-  });
-
-  socket.on("callUser", (data) => {
-    io.to(data.userToCall).emit("callUser", {
-      from: data.from,
-      signal: data.signalData,
-      name: data.name,
-    });
-  });
-
-  socket.on("answerCall", (data) => {
-    io.to(data.to).emit("callAccepted", data.signal);
-  });
   //*Group Vchat
 
   socket.on("create room", (callback) => {
@@ -100,7 +92,6 @@ io.on("connection", (socket) => {
   });
   //*JersApp
   io.emit("getNotification", { status: "ok" });
-  console.log("User connected");
   socket.on("set_user_id", (userId) => {
     socket.userId = userId;
   });
@@ -188,5 +179,25 @@ io.on("connection", (socket) => {
     typingUsers = currentArr;
     io.emit("user_typing", typingUsers);
     console.log(typingUsers, "user_typing");
+  });
+});
+//*V_CHAT
+ioVchat.on("connection", (socket) => {
+  //*Solo Vchat
+  ioVchat.to(socket.id).emit("me", socket.id);
+
+  socket.on("callUser", (data) => {
+    ioVchat.to(data.userToCall).emit("callUser", {
+      from: data.from,
+      signal: data.signalData,
+      name: data.name,
+    });
+  });
+
+  socket.on("answerCall", (data) => {
+    ioVchat.to(data.to).emit("callAccepted", data.signal);
+  });
+  socket.on("disconnect", () => {
+    console.log("Client disconnected");
   });
 });
