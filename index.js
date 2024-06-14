@@ -8,6 +8,8 @@ const app = express();
 const httpServer = createServer(app);
 const cors = require("cors");
 const { WC_Message } = require("./model/message");
+const { VChat_Auth } = require("./model/Vchat_Auth");
+const { log } = require("console");
 app.use(cors());
 app.use(express.json());
 require("dotenv").config();
@@ -65,9 +67,9 @@ io.on("connection", (socket) => {
     if (rooms[roomID]) {
       rooms[roomID].push(socket.id);
       const usersInRoom = rooms[roomID].filter((id) => id !== socket.id);
-      socket.emit("all users", usersInRoom);
+      io.emit("all users", usersInRoom);
     } else {
-      socket.emit("error", "Room not found");
+      io.emit("error", "Room not found");
     }
   });
 
@@ -182,11 +184,36 @@ io.on("connection", (socket) => {
   });
 });
 //*V_CHAT
+
+app.post("/vChat/auth", async (req, res) => {
+  try {
+    const user = await VChat_Auth.findOne({ email: req.body.email });
+
+    if (!user) {
+      const result = await VChat_Auth.create(req.body);
+      if (result) {
+        res.status(200).json({ status: "ok", data: result });
+      } else {
+        res
+          .status(200)
+          .json({ status: "error", message: "something went wrong" });
+      }
+    } else {
+      res.status(200).json({ status: "ok", data: user });
+    }
+  } catch (error) {
+    res.status(500).json({ status: "error", message: error });
+  }
+});
+
 ioVchat.on("connection", (socket) => {
   //*Solo Vchat
-  ioVchat.to(socket.id).emit("me", socket.id);
+  if (socket.handshake.query.userid) {
+    ioVchat.emit("me", socket.handshake.query.userid);
+  }
 
   socket.on("callUser", (data) => {
+    console.log("callUser");
     ioVchat.to(data.userToCall).emit("callUser", {
       from: data.from,
       signal: data.signalData,
