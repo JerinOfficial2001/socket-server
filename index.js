@@ -40,6 +40,15 @@ const ioVchat = new Server(httpServer, {
   },
   // allowEIO3: true,
 });
+const ioGroupVchat = new Server(httpServer, {
+  path: "/groupvchat",
+  // // wsEngine: ["ws", "wss"],
+  transports: ["polling"],
+  cors: {
+    origin: "*",
+  },
+  // allowEIO3: true,
+});
 app.get("/", (req, res) => {
   res.json(`Socket Server is running on:${PORT}`);
 });
@@ -48,50 +57,7 @@ let watchingUsers = [];
 let typingUsers = [];
 const rooms = {};
 
-app.get("/create-room", (req, res) => {
-  const roomID = uuidv4();
-  rooms[roomID] = [];
-  res.json({ roomID });
-});
-
 io.on("connection", (socket) => {
-  //*Group Vchat
-
-  socket.on("create room", (callback) => {
-    const roomID = uuidv4();
-    rooms[roomID] = [];
-    callback(roomID);
-  });
-
-  socket.on("join room", ({ roomID }) => {
-    if (rooms[roomID]) {
-      rooms[roomID].push(socket.id);
-      const usersInRoom = rooms[roomID].filter((id) => id !== socket.id);
-      io.emit("all users", usersInRoom);
-    } else {
-      io.emit("error", "Room not found");
-    }
-  });
-
-  socket.on("sending signal", (payload) => {
-    io.to(payload.userToSignal).emit("user joined", {
-      signal: payload.signal,
-      callerID: payload.callerID,
-    });
-  });
-
-  socket.on("returning signal", (payload) => {
-    io.to(payload.callerID).emit("receiving returned signal", {
-      signal: payload.signal,
-      id: socket.id,
-    });
-  });
-
-  socket.on("disconnect", () => {
-    for (const roomID in rooms) {
-      rooms[roomID] = rooms[roomID].filter((id) => id !== socket.id);
-    }
-  });
   //*JersApp
   io.emit("getNotification", { status: "ok" });
   socket.on("set_user_id", (userId) => {
@@ -208,25 +174,64 @@ app.post("/vChat/auth", async (req, res) => {
 
 ioVchat.on("connection", (socket) => {
   //*Solo Vchat
-  if (socket.handshake.query.userid) {
-    ioVchat
-      .to(socket.handshake.query.userid)
-      .emit("me", socket.handshake.query.userid);
-  }
-
+  socket.on("me", (id) => {
+    socket.join(id);
+    ioVchat.to(id).emit("me", id);
+  });
   socket.on("callUser", (data) => {
-    console.log("callUser");
     ioVchat.to(data.userToCall).emit("callUser", {
       from: data.from,
       signal: data.signalData,
       name: data.name,
     });
   });
-
   socket.on("answerCall", (data) => {
     ioVchat.to(data.to).emit("callAccepted", data.signal);
   });
-  socket.on("disconnect", () => {
-    console.log("Client disconnected");
+  socket.on("callEnded", (data) => {
+    ioVchat.emit("callEnded", data);
   });
+});
+//*Group Vchat
+app.get("/create-room", (req, res) => {
+  const roomID = uuidv4();
+  rooms[roomID] = [];
+  res.json({ roomID });
+});
+ioGroupVchat.on("connection", (socket) => {
+  if (socket.handshake.query.userID) {
+    socket.on("join room", ({ roomID, userID }) => {
+      if (rooms[roomID]) {
+        rooms[roomID].push(userID);
+        console.log(rooms, "test");
+        io.emit("rooms", rooms);
+        const usersInRoom = rooms[roomID].filter((id) => id !== userID);
+        io.emit("all users", usersInRoom);
+      } else {
+        io.emit("error", "Room not found");
+      }
+    });
+
+    socket.on("sending signal", (payload) => {
+      io.to(payload.userToSignal).emit("user joined", {
+        signal: payload.signal,
+        callerID: payload.callerID,
+      });
+    });
+
+    socket.on("returning signal", (payload) => {
+      io.to(payload.callerID).emit("receiving returned signal", {
+        signal: payload.signal,
+        id: payload.userID,
+      });
+    });
+
+    socket.on("disconnect", () => {
+      for (const roomID in rooms) {
+        rooms[roomID] = rooms[roomID].filter(
+          (id) => id !== socket.handshake.query.userID
+        );
+      }
+    });
+  }
 });
