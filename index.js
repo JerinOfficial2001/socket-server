@@ -209,7 +209,9 @@ app.post("/vChat/auth", async (req, res) => {
 ioVchat.on("connection", (socket) => {
   //*Solo Vchat
   if (socket.handshake.query.userid) {
-    ioVchat.emit("me", socket.handshake.query.userid);
+    ioVchat
+      .to(socket.handshake.query.userid)
+      .emit("me", socket.handshake.query.userid);
   }
 
   socket.on("callUser", (data) => {
