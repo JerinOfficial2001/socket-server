@@ -10,6 +10,7 @@ const cors = require("cors");
 const { WC_Message } = require("./model/message");
 const { VChat_Auth } = require("./model/Vchat_Auth");
 const { log } = require("console");
+const { Socket } = require("dgram");
 app.use(cors());
 app.use(express.json());
 require("dotenv").config();
@@ -199,38 +200,70 @@ app.get("/create-room", (req, res) => {
   res.json({ roomID });
 });
 ioGroupVchat.on("connection", (socket) => {
-  if (socket.handshake.query.userID) {
+  const Current_UserID = socket.handshake.query.userID;
+  if (Current_UserID) {
+    console.log(`New client connected: ${Current_UserID}`);
+
     socket.on("join room", ({ roomID, userID }) => {
-      if (rooms[roomID]) {
-        rooms[roomID].push(userID);
-        console.log(rooms, "test");
-        io.emit("rooms", rooms);
-        const usersInRoom = rooms[roomID].filter((id) => id !== userID);
-        io.emit("all users", usersInRoom);
-      } else {
-        io.emit("error", "Room not found");
+      console.log(`User ${userID} joining room ${roomID}`);
+
+      if (!rooms[roomID]) {
+        rooms[roomID] = [];
+      }
+      rooms[roomID].push({ socketID: socket.id, userID });
+
+      const otherUsers = rooms[roomID].filter(
+        (user) => user.socketID !== socket.id
+      );
+      socket.emit(
+        "all-users",
+        otherUsers.map((user) => user.userID)
+      );
+    });
+
+    socket.on("sending signal", ({ userToSignal, callerID, signal }) => {
+      const roomID = Object.keys(rooms).find((roomID) =>
+        rooms[roomID].some((user) => user.userID === userToSignal)
+      );
+      const user = rooms[roomID].find((user) => user.userID === userToSignal);
+
+      if (user) {
+        ioGroupVchat
+          .to(user.socketID)
+          .emit("user joined", { signal, callerID });
       }
     });
 
-    socket.on("sending signal", (payload) => {
-      io.to(payload.userToSignal).emit("user joined", {
-        signal: payload.signal,
-        callerID: payload.callerID,
-      });
+    socket.on("returning signal", ({ signal, callerID }) => {
+      const roomID = Object.keys(rooms).find((roomID) =>
+        rooms[roomID].some((user) => user.userID === callerID)
+      );
+      const user = rooms[roomID].find((user) => user.userID === callerID);
+
+      if (user) {
+        ioGroupVchat.to(user.socketID).emit("receiving returned signal", {
+          signal,
+          id: Current_UserID,
+        });
+      }
     });
 
-    socket.on("returning signal", (payload) => {
-      io.to(payload.callerID).emit("receiving returned signal", {
-        signal: payload.signal,
-        id: payload.userID,
-      });
+    socket.on("media updation", ({ audio, video, id }) => {
+      console.log(
+        `Media update from ${id}: Audio - ${audio}, Video - ${video}`
+      );
+      // Handle media updates if needed
     });
 
     socket.on("disconnect", () => {
+      console.log(`Client disconnected: ${Current_UserID}`);
       for (const roomID in rooms) {
         rooms[roomID] = rooms[roomID].filter(
-          (id) => id !== socket.handshake.query.userID
+          (user) => user.socketID !== socket.id
         );
+        if (rooms[roomID].length === 0) {
+          delete rooms[roomID];
+        }
       }
     });
   }
