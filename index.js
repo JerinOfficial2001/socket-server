@@ -9,14 +9,48 @@ const httpServer = createServer(app);
 const cors = require("cors");
 const { WC_Message } = require("./model/message");
 const { VChat_Auth } = require("./model/Vchat_Auth");
-const { log } = require("console");
-const { Socket } = require("dgram");
+
+const {
+  RemoveUser,
+  AddUser,
+  GetOtherUsers,
+  GetUser,
+  GetRoomID,
+  CreateRoom,
+} = require("./controller/roomID");
+
 app.use(cors());
 app.use(express.json());
 require("dotenv").config();
-const db = process.env.MONGO_DB;
-mongoose.connect(db).then(() => {
-  console.log("DB Connected");
+const dbURI = process.env.MONGO_DB;
+// mongoose.connect(db).then(() => {
+//   console.log("DB Connected");
+// });
+
+mongoose.connect(dbURI);
+
+// Get the default connection
+const db = mongoose.connection;
+
+// Event listeners for Mongoose connection
+db.on("connected", () => {
+  console.log(`MONGOOSE CONNECTED `);
+});
+
+db.on("error", (err) => {
+  console.error(`Mongoose connection error: ${err}`);
+});
+
+db.on("disconnected", () => {
+  console.log("Mongoose disconnected");
+});
+
+// Close the Mongoose connection on process termination
+process.on("SIGINT", () => {
+  db.close(() => {
+    console.log("Mongoose connection disconnected through app termination");
+    process.exit(0);
+  });
 });
 
 const PORT = process.env.PORT || 4000;
@@ -56,10 +90,9 @@ app.get("/", (req, res) => {
 let activeUsers = [];
 let watchingUsers = [];
 let typingUsers = [];
-const rooms = {};
-
+let rooms = {};
+//*JersApp
 io.on("connection", (socket) => {
-  //*JersApp
   io.emit("getNotification", { status: "ok" });
   socket.on("set_user_id", (userId) => {
     socket.userId = userId;
@@ -151,7 +184,6 @@ io.on("connection", (socket) => {
   });
 });
 //*V_CHAT
-
 app.post("/vChat/auth", async (req, res) => {
   try {
     const user = await VChat_Auth.findOne({ email: req.body.email });
@@ -172,7 +204,6 @@ app.post("/vChat/auth", async (req, res) => {
     res.status(500).json({ status: "error", message: error });
   }
 });
-
 ioVchat.on("connection", (socket) => {
   //*Solo Vchat
   socket.on("me", (id) => {
@@ -194,58 +225,61 @@ ioVchat.on("connection", (socket) => {
   });
 });
 //*Group Vchat
-app.get("/create-room", (req, res) => {
+app.get("/create-room", async (req, res) => {
   const roomID = uuidv4();
-  rooms[roomID] = [];
   res.json({ roomID });
+  CreateRoom(roomID);
 });
-ioGroupVchat.on("connection", (socket) => {
+ioGroupVchat.on("connection", async (socket) => {
   const Current_UserID = socket.handshake.query.userID;
-  if (Current_UserID) {
+  const Current_RoomID = socket.handshake.query.roomID;
+  if (Current_UserID && Current_RoomID) {
     console.log(`New client connected: ${Current_UserID}`);
 
-    socket.on("join room", ({ roomID, userID }) => {
+    socket.on("join room", async ({ roomID, userID }) => {
+      socket.join(userID);
       console.log(`User ${userID} joining room ${roomID}`);
+      AddUser(roomID, { userID, socketID: socket.id });
 
-      if (!rooms[roomID]) {
-        rooms[roomID] = [];
-      }
-      rooms[roomID].push({ socketID: socket.id, userID });
+      const otherUsers = await GetOtherUsers(
+        Current_RoomID,
+        Current_UserID
+      ).then((data) => data);
 
-      const otherUsers = rooms[roomID].filter(
-        (user) => user.socketID !== socket.id
-      );
       socket.emit(
         "all-users",
-        otherUsers.map((user) => user.userID)
+        otherUsers.map((i) => i.userID)
       );
     });
 
-    socket.on("sending signal", ({ userToSignal, callerID, signal }) => {
-      const roomID = Object.keys(rooms).find((roomID) =>
-        rooms[roomID].some((user) => user.userID === userToSignal)
-      );
-      const user = rooms[roomID].find((user) => user.userID === userToSignal);
+    socket.on("sending signal", async ({ userToSignal, callerID, signal }) => {
+      const roomID = await GetRoomID(callerID).then((res) => res);
 
-      if (user) {
-        ioGroupVchat
-          .to(user.socketID)
-          .emit("user joined", { signal, callerID });
+      if (roomID) {
+        const user = await GetUser(roomID, callerID).then((res) => res);
+        if (user) {
+          ioGroupVchat
+            .to(userToSignal)
+            .emit("user joined", { signal, callerID });
+        }
+      } else {
+        console.log("UserID not found");
       }
     });
 
-    socket.on("returning signal", ({ signal, callerID }) => {
-      const roomID = Object.keys(rooms).find((roomID) =>
-        rooms[roomID].some((user) => user.userID === callerID)
-      );
-      const user = rooms[roomID].find((user) => user.userID === callerID);
-
-      if (user) {
-        ioGroupVchat.to(user.socketID).emit("receiving returned signal", {
-          signal,
-          id: Current_UserID,
-        });
-      }
+    socket.on("returning signal", async ({ signal, callerID, userID }) => {
+      // const roomID = await GetRoomID(callerID).then((res) => res);
+      // if (roomID) {
+      //   const user = await GetUser(roomID, callerID).then((res) => res);
+      //   if (user) {
+      ioGroupVchat.to(callerID).emit("receiving returned signal", {
+        signal,
+        id: userID,
+      });
+      //   }
+      // } else {
+      //   console.log("UserID not found");
+      // }
     });
 
     socket.on("media updation", ({ audio, video, id }) => {
@@ -257,6 +291,7 @@ ioGroupVchat.on("connection", (socket) => {
 
     socket.on("disconnect", () => {
       console.log(`Client disconnected: ${Current_UserID}`);
+      RemoveUser(Current_RoomID, Current_UserID);
       for (const roomID in rooms) {
         rooms[roomID] = rooms[roomID].filter(
           (user) => user.socketID !== socket.id
