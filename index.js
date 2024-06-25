@@ -75,15 +75,6 @@ const ioVchat = new Server(httpServer, {
   },
   // allowEIO3: true,
 });
-const ioGroupVchat = new Server(httpServer, {
-  path: "/groupvchat",
-  // // wsEngine: ["ws", "wss"],
-  transports: ["polling"],
-  cors: {
-    origin: "*",
-  },
-  // allowEIO3: true,
-});
 app.get("/", (req, res) => {
   res.json(`Socket Server is running on:${PORT}`);
 });
@@ -93,7 +84,13 @@ let typingUsers = [];
 let rooms = {};
 //*JersApp
 io.on("connection", (socket) => {
-  io.emit("getNotification", { status: "ok" });
+  socket.on("me", (id) => {
+    socket.join(id)
+    console.log('me', id);
+  })
+  socket.on("roomID", (id) => {
+    socket.join(id)
+  })
   socket.on("set_user_id", (userId) => {
     socket.userId = userId;
   });
@@ -102,6 +99,7 @@ io.on("connection", (socket) => {
     const allData = await WC_Message.find({});
     io.emit("message", allData);
     io.emit("receivedMsg", obj);
+    socket.to(obj.receiver).emit('notification', { msg: obj.message, name: obj.name })
   });
   socket.on("disconnect", () => {
     console.log("User Disconnected");
@@ -230,82 +228,10 @@ app.get("/create-room", async (req, res) => {
   res.json({ roomID });
   CreateRoom(roomID);
 });
-ioGroupVchat.on("connection", async (socket) => {
-  const Current_UserID = socket.handshake.query.userID;
-  const Current_RoomID = socket.handshake.query.roomID;
-  if (Current_UserID && Current_RoomID) {
-    console.log(`New client connected: ${Current_UserID}`);
 
-    socket.on("join room", async ({ roomID, userID }) => {
-      socket.join(userID);
-      console.log(`User ${userID} joining room ${roomID}`);
-      AddUser(roomID, { userID, socketID: socket.id });
 
-      const otherUsers = await GetOtherUsers(
-        Current_RoomID,
-        Current_UserID
-      ).then((data) => data);
-
-      socket.emit(
-        "all-users",
-        otherUsers.map((i) => i.userID)
-      );
-    });
-
-    socket.on("sending signal", async ({ userToSignal, callerID, signal }) => {
-      const roomID = await GetRoomID(callerID).then((res) => res);
-
-      if (roomID) {
-        const user = await GetUser(roomID, callerID).then((res) => res);
-        if (user) {
-          ioGroupVchat
-            .to(userToSignal)
-            .emit("user joined", { signal, callerID });
-        }
-      } else {
-        console.log("UserID not found");
-      }
-    });
-
-    socket.on("returning signal", async ({ signal, callerID, userID }) => {
-      // const roomID = await GetRoomID(callerID).then((res) => res);
-      // if (roomID) {
-      //   const user = await GetUser(roomID, callerID).then((res) => res);
-      //   if (user) {
-      ioGroupVchat.to(callerID).emit("receiving returned signal", {
-        signal,
-        id: userID,
-      });
-      //   }
-      // } else {
-      //   console.log("UserID not found");
-      // }
-    });
-
-    socket.on("media updation", ({ audio, video, id }) => {
-      console.log(
-        `Media update from ${id}: Audio - ${audio}, Video - ${video}`
-      );
-      // Handle media updates if needed
-    });
-
-    socket.on("disconnect", () => {
-      console.log(`Client disconnected: ${Current_UserID}`);
-      RemoveUser(Current_RoomID, Current_UserID);
-      for (const roomID in rooms) {
-        rooms[roomID] = rooms[roomID].filter(
-          (user) => user.socketID !== socket.id
-        );
-        if (rooms[roomID].length === 0) {
-          delete rooms[roomID];
-        }
-      }
-    });
-  }
-});
-
-const gMeetIO = new Server(httpServer, {
-  path: "/gmeet",
+const ioGroupVchat = new Server(httpServer, {
+  path: "/groupvchat",
   // // wsEngine: ["ws", "wss"],
   transports: ["polling"],
   cors: {
@@ -313,7 +239,7 @@ const gMeetIO = new Server(httpServer, {
   },
   // allowEIO3: true,
 });
-gMeetIO.on('connection', (socket) => {
+ioGroupVchat.on('connection', (socket) => {
   console.log("server is connected")
 
   socket.on('join-room', (roomId, userId) => {
