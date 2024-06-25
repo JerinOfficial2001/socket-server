@@ -84,13 +84,14 @@ let typingUsers = [];
 let rooms = {};
 //*JersApp
 io.on("connection", (socket) => {
+  console.log("userConnected");
   socket.on("me", (id) => {
-    socket.join(id)
-    console.log('me', id);
-  })
+    socket.join(id);
+    console.log("me", id);
+  });
   socket.on("roomID", (id) => {
-    socket.join(id)
-  })
+    socket.join(id);
+  });
   socket.on("set_user_id", (userId) => {
     socket.userId = userId;
   });
@@ -99,7 +100,9 @@ io.on("connection", (socket) => {
     const allData = await WC_Message.find({});
     io.emit("message", allData);
     io.emit("receivedMsg", obj);
-    socket.to(obj.receiver).emit('notification', { msg: obj.message, name: obj.name })
+    socket
+      .to(obj.receiver)
+      .emit("notification", { msg: obj.message, name: obj.name });
   });
   socket.on("disconnect", () => {
     console.log("User Disconnected");
@@ -229,7 +232,6 @@ app.get("/create-room", async (req, res) => {
   CreateRoom(roomID);
 });
 
-
 const ioGroupVchat = new Server(httpServer, {
   path: "/groupvchat",
   // // wsEngine: ["ws", "wss"],
@@ -239,27 +241,27 @@ const ioGroupVchat = new Server(httpServer, {
   },
   // allowEIO3: true,
 });
-ioGroupVchat.on('connection', (socket) => {
-  console.log("server is connected")
+ioGroupVchat.on("connection", (socket) => {
+  console.log("server is connected");
 
-  socket.on('join-room', (roomId, userId) => {
-    console.log(`a new user ${userId} joined room ${roomId}`)
-    socket.join(roomId)
-    socket.broadcast.to(roomId).emit('user-connected', userId)
-  })
+  socket.on("join-room", (roomId, userId) => {
+    console.log(`a new user ${userId} joined room ${roomId}`);
+    socket.join(roomId);
+    socket.broadcast.to(roomId).emit("user-connected", userId);
+  });
 
-  socket.on('user-toggle-audio', (userId, roomId) => {
-    socket.join(roomId)
-    socket.broadcast.to(roomId).emit('user-toggle-audio', userId)
-  })
+  socket.on("user-toggle-audio", (userId, roomId) => {
+    socket.join(roomId);
+    socket.broadcast.to(roomId).emit("user-toggle-audio", userId);
+  });
 
-  socket.on('user-toggle-video', (userId, roomId) => {
-    socket.join(roomId)
-    socket.broadcast.to(roomId).emit('user-toggle-video', userId)
-  })
+  socket.on("user-toggle-video", (userId, roomId) => {
+    socket.join(roomId);
+    socket.broadcast.to(roomId).emit("user-toggle-video", userId);
+  });
 
-  socket.on('user-leave', (userId, roomId) => {
-    socket.join(roomId)
-    socket.broadcast.to(roomId).emit('user-leave', userId)
-  })
-})
+  socket.on("user-leave", (userId, roomId) => {
+    socket.join(roomId);
+    socket.broadcast.to(roomId).emit("user-leave", userId);
+  });
+});
