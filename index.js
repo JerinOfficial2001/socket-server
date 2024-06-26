@@ -18,6 +18,7 @@ const {
   GetRoomID,
   CreateRoom,
 } = require("./controller/roomID");
+const { UpdateLastMsg, AddContacts } = require("./controller/contacts");
 
 app.use(cors());
 app.use(express.json());
@@ -79,9 +80,8 @@ app.get("/", (req, res) => {
   res.json(`Socket Server is running on:${PORT}`);
 });
 let activeUsers = [];
-let watchingUsers = [];
-let typingUsers = [];
 let rooms = {};
+let newMsgs = {};
 //*JersApp
 io.on("connection", (socket) => {
   console.log("userConnected");
@@ -103,85 +103,68 @@ io.on("connection", (socket) => {
     socket
       .to(obj.receiver)
       .emit("notification", { msg: obj.message, name: obj.name });
+
+    const isAdded = await AddContacts({
+      id: obj.receiver,
+      senderID: obj.sender,
+      msg: { id: obj.sender, msg: obj.message },
+    });
+    if (!isAdded) {
+      UpdateLastMsg(obj.sender, obj.receiver, {
+        id: obj.sender,
+        msg: obj.message,
+      });
+    }
+
+    if (!newMsgs[obj.receiver]) {
+      newMsgs[obj.receiver] = [];
+      newMsgs[obj.receiver].push({ id: obj.receiver, msg: obj.message });
+      socket.to(obj.receiver).emit("newMsgs", newMsgs[obj.receiver]);
+      console.log("!", newMsgs);
+    } else {
+      newMsgs[obj.receiver].push({ id: obj.receiver, msg: obj.message });
+      socket.to(obj.receiver).emit("newMsgs", newMsgs[obj.receiver]);
+      console.log("+", newMsgs);
+    }
+  });
+  socket.on("clearNewMsg", ({ id, receiverID }) => {
+    console.log("test");
+    newMsgs[id] = [];
+    socket.to(receiverID).emit("newMsgs", newMsgs[id]);
   });
   socket.on("disconnect", () => {
     console.log("User Disconnected");
-    const disconnectedUserId = socket.userId; // Assuming socket.id is the user ID
+    const disconnectedUserId = socket.userId;
     const currentArr = activeUsers.filter(
       (user) => user.id !== disconnectedUserId
     );
-
     activeUsers = currentArr;
     io.emit("user_connected", activeUsers);
-    console.log(activeUsers, "activeUsers");
   });
   socket.on("user_connected", (obj) => {
     const alreadyActiveIndex = activeUsers.findIndex(
       (user) => user.id == obj.id
     );
-
     if (alreadyActiveIndex !== -1) {
-      // User is already active, update status to "online"
       activeUsers[alreadyActiveIndex].status = "online";
     } else {
-      // Add user to the list with status "online"
       obj.status = "online";
       obj.socket = socket.userId;
       activeUsers.push(obj);
     }
-    console.log("user_connected", activeUsers);
     io.emit("user_connected", activeUsers);
   });
-
   socket.on("user_watching", (obj) => {
-    const alreadyActiveIndex = watchingUsers.findIndex(
-      (user) => user.id == obj.id
-    );
-
-    if (alreadyActiveIndex !== -1) {
-      // User is already active, update status to "online"
-      watchingUsers[alreadyActiveIndex].status = true;
-    } else {
-      // Add user to the list with status "online"
-      obj.status = true;
-      obj.socket = socket.userId;
-      watchingUsers.push(obj);
-    }
-
-    io.emit("user_watching", watchingUsers);
-    console.log(watchingUsers, "user_watching");
+    socket.to(obj.receiverId).emit("user_watching", { isWatching: true });
   });
-  socket.on("user_watchout", (id) => {
-    const currentArr = watchingUsers.filter((user) => user.id !== id);
-
-    watchingUsers = currentArr;
-    io.emit("user_watching", watchingUsers);
-    console.log(watchingUsers, "user_watching");
+  socket.on("user_watchout", (obj) => {
+    socket.to(obj.receiverId).emit("user_watching", { isWatching: false });
   });
   socket.on("user_typing", (obj) => {
-    const alreadyActiveIndex = typingUsers.findIndex(
-      (user) => user.id == obj.id
-    );
-
-    if (alreadyActiveIndex !== -1) {
-      // User is already active, update status to "online"
-      typingUsers[alreadyActiveIndex].status = true;
-    } else {
-      // Add user to the list with status "online"
-      obj.status = true;
-      obj.socket = socket.userId;
-      typingUsers.push(obj);
-    }
-
-    io.emit("user_typing", typingUsers);
-    console.log(typingUsers, "user_typing");
+    socket.to(obj.receiverId).emit("user_typing", { isTyping: true });
   });
-  socket.on("user_typed", (id) => {
-    const currentArr = typingUsers.filter((user) => user.id !== id);
-
-    typingUsers = currentArr;
-    io.emit("user_typing", typingUsers);
-    console.log(typingUsers, "user_typing");
+  socket.on("user_typed", (obj) => {
+    socket.to(obj.receiverId).emit("user_typing", { isTyping: false });
   });
 });
 //*V_CHAT
