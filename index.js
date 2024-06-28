@@ -18,7 +18,11 @@ const {
   GetRoomID,
   CreateRoom,
 } = require("./controller/roomID");
-const { UpdateLastMsg, AddContacts } = require("./controller/contacts");
+const {
+  UpdateLastMsg,
+  AddContacts,
+  UpdateMsgCount,
+} = require("./controller/contacts");
 
 app.use(cors());
 app.use(express.json());
@@ -119,28 +123,32 @@ io.on("connection", (socket) => {
     if (!newMsgs[obj.receiver]) {
       newMsgs[obj.receiver] = [];
       newMsgs[obj.receiver].push({ id: obj.receiver, msg: obj.message });
-      socket.to(obj.receiver).emit("newMsgs", newMsgs[obj.receiver]);
-      console.log("!", newMsgs);
+      socket.to(obj.receiver).emit("newMsgs", {
+        lastMsg: { msg: obj.message, id: obj.receiver },
+        count: newMsgs[obj.receiver].length,
+      });
+      UpdateMsgCount(
+        { receiverId: obj.receiver },
+        newMsgs[obj.receiver].length
+      );
     } else {
       newMsgs[obj.receiver].push({ id: obj.receiver, msg: obj.message });
-      socket.to(obj.receiver).emit("newMsgs", newMsgs[obj.receiver]);
-      console.log("+", newMsgs);
+      socket.to(obj.receiver).emit("newMsgs", {
+        lastMsg: { msg: obj.message, id: obj.receiver },
+        count: newMsgs[obj.receiver].length,
+      });
+      UpdateMsgCount(
+        { receiverId: obj.receiver },
+        newMsgs[obj.receiver].length
+      );
     }
   });
-  socket.on("clearNewMsg", ({ id, receiverID }) => {
-    console.log("test");
+  socket.on("clearNewMsg", ({ id, Contact_id }) => {
     newMsgs[id] = [];
-    socket.to(receiverID).emit("newMsgs", newMsgs[id]);
+    socket.to(id).emit("newMsgs", { count: 0, lastMsg: "" });
+    UpdateMsgCount({ Contact_id }, "0");
   });
-  socket.on("disconnect", () => {
-    console.log("User Disconnected");
-    const disconnectedUserId = socket.userId;
-    const currentArr = activeUsers.filter(
-      (user) => user.id !== disconnectedUserId
-    );
-    activeUsers = currentArr;
-    io.emit("user_connected", activeUsers);
-  });
+
   socket.on("user_connected", (obj) => {
     const alreadyActiveIndex = activeUsers.findIndex(
       (user) => user.id == obj.id
@@ -155,16 +163,42 @@ io.on("connection", (socket) => {
     io.emit("user_connected", activeUsers);
   });
   socket.on("user_watching", (obj) => {
-    socket.to(obj.receiverId).emit("user_watching", { isWatching: true });
+    socket
+      .to(obj.receiverId)
+      .emit("user_watching", { isWatching: true, id: obj.id });
   });
   socket.on("user_watchout", (obj) => {
-    socket.to(obj.receiverId).emit("user_watching", { isWatching: false });
+    socket
+      .to(obj.receiverId)
+      .emit("user_watching", { isWatching: false, id: obj.id });
   });
   socket.on("user_typing", (obj) => {
-    socket.to(obj.receiverId).emit("user_typing", { isTyping: true });
+    console.log(obj, "typing");
+    socket
+      .to(obj.receiverId)
+      .emit("user_typing", { isTyping: true, id: obj.id });
   });
   socket.on("user_typed", (obj) => {
-    socket.to(obj.receiverId).emit("user_typing", { isTyping: false });
+    console.log(obj, "typed");
+
+    socket
+      .to(obj.receiverId)
+      .emit("user_typing", { isTyping: false, id: obj.id });
+  });
+  socket.on("removeUser", (id) => {
+    const currentArr = activeUsers.filter((user) => user.id !== id);
+    activeUsers = currentArr;
+    io.emit("user_connected", activeUsers);
+    socket.leave(id);
+  });
+  socket.on("disconnect", () => {
+    console.log("User Disconnected");
+    const disconnectedUserId = socket.userId;
+    const currentArr = activeUsers.filter(
+      (user) => user.id !== disconnectedUserId
+    );
+    activeUsers = currentArr;
+    io.emit("user_connected", activeUsers);
   });
 });
 //*V_CHAT
@@ -188,8 +222,8 @@ app.post("/vChat/auth", async (req, res) => {
     res.status(500).json({ status: "error", message: error });
   }
 });
+//*Solo Vchat
 ioVchat.on("connection", (socket) => {
-  //*Solo Vchat
   socket.on("me", (id) => {
     socket.join(id);
     ioVchat.to(id).emit("me", id);
@@ -214,7 +248,6 @@ app.get("/create-room", async (req, res) => {
   res.json({ roomID });
   CreateRoom(roomID);
 });
-
 const ioGroupVchat = new Server(httpServer, {
   path: "/groupvchat",
   // // wsEngine: ["ws", "wss"],

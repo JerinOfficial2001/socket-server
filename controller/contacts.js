@@ -17,6 +17,7 @@ exports.AddContacts = async (data) => {
           user_id: id,
           ContactDetails: { _id: senderID, name: userData.name },
           lastMsg: msg,
+          msgCount: 1,
         });
         return true;
       } else {
@@ -62,7 +63,7 @@ exports.UpdateLastMsg = async (ID1, ID2, msg) => {
         if (contact1Result && contact2Result) {
           console.log({
             status: "ok",
-            message: "Updated successfully",
+            message: "Last Msg Updated successfully",
           });
         } else {
           console.log({
@@ -79,7 +80,7 @@ exports.UpdateLastMsg = async (ID1, ID2, msg) => {
         } else {
           console.log({
             status: "error",
-            message: "contact1 not found",
+            message: "contact2 not found",
           });
         }
       }
@@ -87,6 +88,52 @@ exports.UpdateLastMsg = async (ID1, ID2, msg) => {
       console.log({
         status: "error",
         message: "ID required",
+      });
+    }
+  } catch (error) {
+    console.log({ status: "error", message: "something Went wrong" });
+  }
+};
+exports.UpdateMsgCount = async (ID, count) => {
+  try {
+    if ((ID.Contact_id || ID.receiverId) && count) {
+      const contact = ID.Contact_id
+        ? await WC_Contact.findById(ID.Contact_id)
+        : await WC_Contact.findOne({ user_id: ID.receiverId });
+      if (contact) {
+        const UpdatedContact = {
+          Contact_id: contact.Contact_id,
+          name: contact.name,
+          user_id: contact.user_id,
+          ContactDetails: contact.ContactDetails,
+          lastMsg: contact.lastMsg,
+          msgCount: count,
+        };
+        const contactResult = await WC_Contact.findByIdAndUpdate(
+          contact._id,
+          UpdatedContact
+        );
+        if (contactResult) {
+          console.log({
+            status: "ok",
+            message: "MSG count Updated successfully",
+          });
+        } else {
+          console.log({
+            status: "error",
+            message: "failed",
+          });
+        }
+      } else {
+        console.log({
+          status: "error",
+          message: "contact not found",
+        });
+      }
+    } else {
+      console.log({
+        status: "error",
+        message: "UpdateMsgCount required field missing",
       });
     }
   } catch (error) {
