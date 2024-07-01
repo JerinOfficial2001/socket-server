@@ -15,7 +15,7 @@ exports.AddContacts = async (data) => {
           Contact_id: userData.mobNum,
           name: userData.name,
           user_id: id,
-          ContactDetails: { _id: senderID, name: userData.name },
+          ContactDetails: { _id: senderID, name: userData.name, image: userData.image },
           lastMsg: msg,
           msgCount: 1,
         });
