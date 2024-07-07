@@ -23,6 +23,8 @@ const {
   AddContacts,
   UpdateMsgCount,
 } = require("./controller/contacts");
+const { WC_grp_message } = require("./model/Groups/message");
+const { WC_Group } = require("./model/Groups/group");
 
 app.use(cors());
 app.use(express.json());
@@ -86,8 +88,16 @@ app.get("/", (req, res) => {
 let activeUsers = [];
 let rooms = {};
 let newMsgs = {};
+let usersInGroup = {};
 //*JersApp
-io.on("connection", (socket) => {
+io.on("connection", async (socket) => {
+  const groups = await WC_Group.find({});
+  const groupIds = groups.map((elem) => elem._id.toHexString());
+  if (groupIds && groupIds.length > 0) {
+    for (let id of groupIds) {
+      socket.join(id);
+    }
+  }
   console.log("userConnected");
   socket.on("me", (id) => {
     socket.join(id);
@@ -148,7 +158,6 @@ io.on("connection", (socket) => {
     socket.to(id).emit("newMsgs", { count: 0, lastMsg: "" });
     UpdateMsgCount({ Contact_id }, "0");
   });
-
   socket.on("user_connected", (obj) => {
     const alreadyActiveIndex = activeUsers.findIndex(
       (user) => user.id == obj.id
@@ -191,6 +200,55 @@ io.on("connection", (socket) => {
     io.emit("user_connected", activeUsers);
     socket.leave(id);
   });
+
+  //*Group
+
+  socket.on("send_group_msg", async (obj) => {
+    const newMsg = new WC_grp_message(obj);
+    const result = await newMsg.save();
+    if (result) {
+      const group = await WC_Group.findById(obj.group_id);
+      if (group) {
+        group.messages.push(result._id);
+        const isAdded = await group.save();
+        if (isAdded) {
+          socket.to(obj.group_id).emit("new_group_msg", obj);
+        } else {
+          console.log({ status: "error", message: "Group msg failed" });
+        }
+      } else {
+        console.log({ status: "error", message: "Group not found" });
+      }
+    } else {
+      console.log({ status: "error", message: "Something went wrong" });
+    }
+  });
+  socket.on("join_group", (obj) => {
+    if (!usersInGroup[obj.groupID]) {
+      usersInGroup[obj.groupID] = [];
+    }
+    if (!usersInGroup[obj.groupID].includes(obj.userID)) {
+      usersInGroup[obj.groupID].push(obj);
+    }
+    console.log(usersInGroup, "Joined", obj.userID);
+    io.to(obj.groupID).emit("userInGroup", usersInGroup[obj.groupID]);
+  });
+  socket.on("remove_group", (obj) => {
+    if (!usersInGroup[obj.groupID]) {
+      usersInGroup[obj.groupID] = [];
+    } else {
+      if (usersInGroup[obj.groupID].some((i) => i.userID == obj.userID)) {
+        const users = usersInGroup[obj.groupID].filter(
+          (elem) => elem.userID != obj.userID
+        );
+        usersInGroup[obj.groupID] = users;
+      }
+    }
+    console.log(usersInGroup[obj.groupID], "Leave", obj.userID);
+
+    io.to(obj.groupID).emit("userInGroup", usersInGroup[obj.groupID]);
+  });
+
   socket.on("disconnect", () => {
     console.log("User Disconnected");
     const disconnectedUserId = socket.userId;
