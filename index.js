@@ -25,6 +25,7 @@ const {
 } = require("./controller/contacts");
 const { WC_grp_message } = require("./model/Groups/message");
 const { WC_Group } = require("./model/Groups/group");
+const { UpdateMemberRole, RemoveMemberFromGroup, AddMembersToGroup } = require("./controller/members");
 
 app.use(cors());
 app.use(express.json());
@@ -230,7 +231,7 @@ io.on("connection", async (socket) => {
     if (!usersInGroup[obj.groupID].includes(obj.userID)) {
       usersInGroup[obj.groupID].push(obj);
     }
-    console.log(usersInGroup, "Joined", obj.userID);
+    // console.log(usersInGroup, "Joined", obj.userID);
     io.to(obj.groupID).emit("userInGroup", usersInGroup[obj.groupID]);
   });
   socket.on("remove_group", (obj) => {
@@ -244,10 +245,23 @@ io.on("connection", async (socket) => {
         usersInGroup[obj.groupID] = users;
       }
     }
-    console.log(usersInGroup[obj.groupID], "Leave", obj.userID);
+    // console.log(usersInGroup[obj.groupID], "Leave", obj.userID);
 
     io.to(obj.groupID).emit("userInGroup", usersInGroup[obj.groupID]);
   });
+  socket.on('add_member', async (obj) => {
+    // const result = await AddMembersToGroup(obj).then(data => data)
+    io.to(obj.groupID).emit('role_updation_result', { response: true, groupID: obj })
+  })
+  socket.on('update_role', async (obj) => {
+    // const result = await UpdateMemberRole(obj).then(data => data)
+    io.to(obj.groupID).emit('role_updation_result', { response: true, groupID: obj.groupID })
+  })
+  socket.on('remove_member', async (obj) => {
+    // const result = await RemoveMemberFromGroup(obj).then(data => data)
+    io.to(obj.groupID).emit('role_updation_result', { response: true, groupID: obj.groupID })
+  })
+
 
   socket.on("disconnect", () => {
     console.log("User Disconnected");
