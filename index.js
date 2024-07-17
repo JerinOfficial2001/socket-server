@@ -30,6 +30,7 @@ const {
   RemoveMemberFromGroup,
   AddMembersToGroup,
 } = require("./controller/members");
+const { default: axios } = require("axios");
 
 app.use(cors());
 app.use(express.json());
@@ -57,9 +58,9 @@ db.on("error", (err) => {
 db.on("disconnected", () => {
   console.log("Mongoose disconnected");
 });
-JERS_DB.on("connected", () => {
-  console.log(`JERS_DB CONNECTED `);
-});
+// JERS_DB.on("connected", () => {
+//   console.log(`JERS_DB CONNECTED `);
+// });
 
 JERS_DB.on("error", (err) => {
   console.error(`JERS_DB connection error: ${err}`);
@@ -378,19 +379,19 @@ ioGroupVchat.on("connection", (socket) => {
   });
 });
 //*Jers-folio
-const Portfolio_FeedBackMsg = new mongoose.Schema(
-  {
-    name: String,
-    image: Object,
-    message: Object,
-    user_id: String,
-  },
-  { timestamps: true }
-);
-const FeedBackMsg = JERS_DB.model(
-  "Portfolio_FeedBackMsg",
-  Portfolio_FeedBackMsg
-);
+// const Portfolio_FeedBackMsg = new mongoose.Schema(
+//   {
+//     name: String,
+//     image: Object,
+//     message: Object,
+//     user_id: String,
+//   },
+//   { timestamps: true }
+// );
+// const FeedBackMsg = JERS_DB.model(
+//   "Portfolio_FeedBackMsg",
+//   Portfolio_FeedBackMsg
+// );
 const ioJersFolio = new Server(httpServer, {
   path: "/jersfolio",
   // // wsEngine: ["ws", "wss"],
@@ -401,12 +402,10 @@ const ioJersFolio = new Server(httpServer, {
   // allowEIO3: true,
 });
 ioJersFolio.on("connection", (socket) => {
-  socket.on("message", async (obj) => {
-    const result = await FeedBackMsg.create(obj);
-    if (result) {
-      ioJersFolio.emit("message", { status: "ok", message: "Message Send" });
-    } else {
-      ioJersFolio.emit("message", { status: "error", message: "Failed" });
-    }
+  socket.on("sendmessage", async (obj) => {
+    ioJersFolio.emit("receivemessage", {
+      status: "ok",
+      message: "Message Send",
+    });
   });
 });
