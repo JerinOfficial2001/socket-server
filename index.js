@@ -25,20 +25,25 @@ const {
 } = require("./controller/contacts");
 const { WC_grp_message } = require("./model/Groups/message");
 const { WC_Group } = require("./model/Groups/group");
-const { UpdateMemberRole, RemoveMemberFromGroup, AddMembersToGroup } = require("./controller/members");
+const {
+  UpdateMemberRole,
+  RemoveMemberFromGroup,
+  AddMembersToGroup,
+} = require("./controller/members");
 
 app.use(cors());
 app.use(express.json());
 require("dotenv").config();
 const dbURI = process.env.MONGO_DB;
+const JERS_folio_DB = process.env.JERS_folio_DB;
 // mongoose.connect(db).then(() => {
 //   console.log("DB Connected");
 // });
 
-mongoose.connect(dbURI);
+const JERS_DB = mongoose.createConnection(JERS_folio_DB);
 
 // Get the default connection
-const db = mongoose.connection;
+const db = mongoose.createConnection(dbURI);
 
 // Event listeners for Mongoose connection
 db.on("connected", () => {
@@ -51,6 +56,17 @@ db.on("error", (err) => {
 
 db.on("disconnected", () => {
   console.log("Mongoose disconnected");
+});
+JERS_DB.on("connected", () => {
+  console.log(`JERS_DB CONNECTED `);
+});
+
+JERS_DB.on("error", (err) => {
+  console.error(`JERS_DB connection error: ${err}`);
+});
+
+JERS_DB.on("disconnected", () => {
+  console.log("JERS_DB disconnected");
 });
 
 // Close the Mongoose connection on process termination
@@ -249,19 +265,27 @@ io.on("connection", async (socket) => {
 
     io.to(obj.groupID).emit("userInGroup", usersInGroup[obj.groupID]);
   });
-  socket.on('add_member', async (obj) => {
+  socket.on("add_member", async (obj) => {
     // const result = await AddMembersToGroup(obj).then(data => data)
-    io.to(obj.groupID).emit('role_updation_result', { response: true, groupID: obj })
-  })
-  socket.on('update_role', async (obj) => {
+    io.to(obj.groupID).emit("role_updation_result", {
+      response: true,
+      groupID: obj,
+    });
+  });
+  socket.on("update_role", async (obj) => {
     // const result = await UpdateMemberRole(obj).then(data => data)
-    io.to(obj.groupID).emit('role_updation_result', { response: true, groupID: obj.groupID })
-  })
-  socket.on('remove_member', async (obj) => {
+    io.to(obj.groupID).emit("role_updation_result", {
+      response: true,
+      groupID: obj.groupID,
+    });
+  });
+  socket.on("remove_member", async (obj) => {
     // const result = await RemoveMemberFromGroup(obj).then(data => data)
-    io.to(obj.groupID).emit('role_updation_result', { response: true, groupID: obj.groupID })
-  })
-
+    io.to(obj.groupID).emit("role_updation_result", {
+      response: true,
+      groupID: obj.groupID,
+    });
+  });
 
   socket.on("disconnect", () => {
     console.log("User Disconnected");
@@ -351,5 +375,38 @@ ioGroupVchat.on("connection", (socket) => {
   socket.on("user-leave", (userId, roomId) => {
     socket.join(roomId);
     socket.broadcast.to(roomId).emit("user-leave", userId);
+  });
+});
+//*Jers-folio
+const Portfolio_FeedBackMsg = new mongoose.Schema(
+  {
+    name: String,
+    image: Object,
+    message: Object,
+    user_id: String,
+  },
+  { timestamps: true }
+);
+const FeedBackMsg = JERS_DB.model(
+  "Portfolio_FeedBackMsg",
+  Portfolio_FeedBackMsg
+);
+const ioJersFolio = new Server(httpServer, {
+  path: "/jersfolio",
+  // // wsEngine: ["ws", "wss"],
+  transports: ["polling"],
+  cors: {
+    origin: "*",
+  },
+  // allowEIO3: true,
+});
+ioJersFolio.on("connection", (socket) => {
+  socket.on("message", async (obj) => {
+    const result = await FeedBackMsg.create(obj);
+    if (result) {
+      ioJersFolio.emit("message", { status: "ok", message: "Message Send" });
+    } else {
+      ioJersFolio.emit("message", { status: "error", message: "Failed" });
+    }
   });
 });
