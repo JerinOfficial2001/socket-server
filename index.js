@@ -25,58 +25,52 @@ const {
 } = require("./controller/contacts");
 const { WC_grp_message } = require("./model/Groups/message");
 const { WC_Group } = require("./model/Groups/group");
-const {
-  UpdateMemberRole,
-  RemoveMemberFromGroup,
-  AddMembersToGroup,
-} = require("./controller/members");
-const { default: axios } = require("axios");
 
 app.use(cors());
 app.use(express.json());
 require("dotenv").config();
-const dbURI = process.env.MONGO_DB;
+const db = process.env.MONGO_DB;
 const JERS_folio_DB = process.env.JERS_folio_DB;
-// mongoose.connect(db).then(() => {
-//   console.log("DB Connected");
-// });
+mongoose.connect(db).then(() => {
+  console.log("DB Connected");
+});
 
-const JERS_DB = mongoose.createConnection(JERS_folio_DB);
+// const JERS_DB = mongoose.createConnection(JERS_folio_DB);
 
 // Get the default connection
-const db = mongoose.createConnection(dbURI);
+// const db = mongoose.createConnection(dbURI);
 
 // Event listeners for Mongoose connection
-db.on("connected", () => {
-  console.log(`MONGOOSE CONNECTED `);
-});
+// db.on("connected", () => {
+//   console.log(`MONGOOSE CONNECTED `);
+// });
 
-db.on("error", (err) => {
-  console.error(`Mongoose connection error: ${err}`);
-});
+// db.on("error", (err) => {
+//   console.error(`Mongoose connection error: ${err}`);
+// });
 
-db.on("disconnected", () => {
-  console.log("Mongoose disconnected");
-});
+// db.on("disconnected", () => {
+//   console.log("Mongoose disconnected");
+// });
 // JERS_DB.on("connected", () => {
 //   console.log(`JERS_DB CONNECTED `);
 // });
 
-JERS_DB.on("error", (err) => {
-  console.error(`JERS_DB connection error: ${err}`);
-});
+// JERS_DB.on("error", (err) => {
+//   console.error(`JERS_DB connection error: ${err}`);
+// });
 
-JERS_DB.on("disconnected", () => {
-  console.log("JERS_DB disconnected");
-});
+// JERS_DB.on("disconnected", () => {
+//   console.log("JERS_DB disconnected");
+// });
 
-// Close the Mongoose connection on process termination
-process.on("SIGINT", () => {
-  db.close(() => {
-    console.log("Mongoose connection disconnected through app termination");
-    process.exit(0);
-  });
-});
+// // Close the Mongoose connection on process termination
+// process.on("SIGINT", () => {
+//   db.close(() => {
+//     console.log("Mongoose connection disconnected through app termination");
+//     process.exit(0);
+//   });
+// });
 
 const PORT = process.env.PORT || 4000;
 httpServer.listen(PORT, () => {
