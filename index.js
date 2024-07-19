@@ -103,6 +103,7 @@ let newMsgs = {};
 let usersInGroup = {};
 //*JersApp
 io.on("connection", async (socket) => {
+
   const groups = await WC_Group.find({});
   const groupIds = groups.map((elem) => elem._id.toHexString());
   if (groupIds && groupIds.length > 0) {
@@ -110,11 +111,40 @@ io.on("connection", async (socket) => {
       socket.join(id);
     }
   }
-  console.log("userConnected");
   socket.on("me", (id) => {
     socket.join(id);
     console.log("me", id);
   });
+
+
+
+  socket.on('offer', data => {
+    // console.log('Offer received from', data.from, data.to);
+    socket.to(data.to).emit('offer', {
+      from: data.from,
+      offer: data.offer,
+      localStream: data.localStream
+    });
+  });
+
+  socket.on('answer', data => {
+    socket.to(data.to).emit('answer', {
+      from: data.from,
+      answer: data.answer,
+      remoteStream: data.remoteStream
+    });
+  });
+
+  socket.on('icecandidate', data => {
+    // console.log('ICE candidate received from', data.from, data.to);
+    socket.to(data.to).emit('icecandidate', {
+      from: data.from,
+      candidate: data.candidate,
+    });
+  });
+
+
+
   socket.on("roomID", (id) => {
     socket.join(id);
   });
