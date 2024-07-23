@@ -136,14 +136,18 @@ io.on("connection", async (socket) => {
   });
 
   socket.on('icecandidate', data => {
-    // console.log('ICE candidate received from', data.from, data.to);
+    console.log('ICE candidate received from', data.from);
     socket.to(data.to).emit('icecandidate', {
       from: data.from,
       candidate: data.candidate,
     });
   });
 
-
+  socket.on('callend', data => {
+    socket.to(data.to).emit('callend', {
+      state: true,
+    });
+  });
 
   socket.on("roomID", (id) => {
     socket.join(id);
