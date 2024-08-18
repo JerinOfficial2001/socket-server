@@ -1,17 +1,22 @@
 const mongoose = require("mongoose");
-const WC_ContactSchema = new mongoose.Schema(
+const JersApp_ContactSchema = new mongoose.Schema(
   {
-    Contact_id: String,
+    phone: Number,
     name: String,
     user_id: String,
     ContactDetails: Object,
     lastMsg: Object,
     msgCount: Number,
+    given_name: String,
+    creator_id: String,
   },
   {
     timestamps: true,
   }
 );
 
-const WC_Contact = mongoose.model("WC_Contact", WC_ContactSchema);
-exports.WC_Contact = WC_Contact;
+const JersApp_Contact = mongoose.model(
+  "JersApp_Contact",
+  JersApp_ContactSchema
+);
+exports.JersApp_Contact = JersApp_Contact;

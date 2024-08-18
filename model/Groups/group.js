@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const WC_GroupSchema = new mongoose.Schema(
+const JersApp_GroupSchema = new mongoose.Schema(
   {
     group_name: { type: String, required: true },
     created_by: { type: String, required: true },
@@ -9,13 +9,13 @@ const WC_GroupSchema = new mongoose.Schema(
     messages: [
       {
         type: mongoose.Types.ObjectId,
-        ref: "WC_grp_message",
+        ref: "JersApp_grp_message",
       },
     ],
     members: [
       {
         type: mongoose.Types.ObjectId,
-        ref: "WC_grp_members",
+        ref: "JersApp_grp_members",
       },
     ],
   },
@@ -24,5 +24,5 @@ const WC_GroupSchema = new mongoose.Schema(
   }
 );
 
-const WC_Group = mongoose.model("WC_Group", WC_GroupSchema);
-exports.WC_Group = WC_Group;
+const JersApp_Group = mongoose.model("JersApp_Group", JersApp_GroupSchema);
+exports.JersApp_Group = JersApp_Group;

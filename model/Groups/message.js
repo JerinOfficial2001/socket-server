@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const WC_grp_messageSchema = new mongoose.Schema(
+const JersApp_grp_messageSchema = new mongoose.Schema(
   {
     sender_id: { type: String, required: true },
     group_id: { type: String, required: true },
@@ -10,5 +10,8 @@ const WC_grp_messageSchema = new mongoose.Schema(
   }
 );
 
-const WC_grp_message = mongoose.model("WC_grp_message", WC_grp_messageSchema);
-exports.WC_grp_message = WC_grp_message;
+const JersApp_grp_message = mongoose.model(
+  "JersApp_grp_message",
+  JersApp_grp_messageSchema
+);
+exports.JersApp_grp_message = JersApp_grp_message;
