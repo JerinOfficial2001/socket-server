@@ -7,7 +7,7 @@ const { v4: uuidv4 } = require("uuid");
 const app = express();
 const httpServer = createServer(app);
 const cors = require("cors");
-const { WC_Message } = require("./model/message");
+const { JersApp_Message } = require("./model/message");
 const { VChat_Auth } = require("./model/Vchat_Auth");
 
 const {
@@ -23,8 +23,8 @@ const {
   AddContacts,
   UpdateMsgCount,
 } = require("./controller/contacts");
-const { WC_grp_message } = require("./model/Groups/message");
-const { WC_Group } = require("./model/Groups/group");
+const { JersApp_grp_message } = require("./model/Groups/message");
+const { JersApp_Group } = require("./model/Groups/group");
 
 app.use(cors());
 app.use(express.json());
@@ -34,43 +34,6 @@ const JERS_folio_DB = process.env.JERS_folio_DB;
 mongoose.connect(db).then(() => {
   console.log("DB Connected");
 });
-
-// const JERS_DB = mongoose.createConnection(JERS_folio_DB);
-
-// Get the default connection
-// const db = mongoose.createConnection(dbURI);
-
-// Event listeners for Mongoose connection
-// db.on("connected", () => {
-//   console.log(`MONGOOSE CONNECTED `);
-// });
-
-// db.on("error", (err) => {
-//   console.error(`Mongoose connection error: ${err}`);
-// });
-
-// db.on("disconnected", () => {
-//   console.log("Mongoose disconnected");
-// });
-// JERS_DB.on("connected", () => {
-//   console.log(`JERS_DB CONNECTED `);
-// });
-
-// JERS_DB.on("error", (err) => {
-//   console.error(`JERS_DB connection error: ${err}`);
-// });
-
-// JERS_DB.on("disconnected", () => {
-//   console.log("JERS_DB disconnected");
-// });
-
-// // Close the Mongoose connection on process termination
-// process.on("SIGINT", () => {
-//   db.close(() => {
-//     console.log("Mongoose connection disconnected through app termination");
-//     process.exit(0);
-//   });
-// });
 
 const PORT = process.env.PORT || 4000;
 httpServer.listen(PORT, () => {
@@ -103,8 +66,7 @@ let newMsgs = {};
 let usersInGroup = {};
 //*JersApp
 io.on("connection", async (socket) => {
-
-  const groups = await WC_Group.find({});
+  const groups = await JersApp_Group.find({});
   const groupIds = groups.map((elem) => elem._id.toHexString());
   if (groupIds && groupIds.length > 0) {
     for (let id of groupIds) {
@@ -116,35 +78,33 @@ io.on("connection", async (socket) => {
     console.log("me", id);
   });
 
-
-
-  socket.on('offer', data => {
+  socket.on("offer", (data) => {
     // console.log('Offer received from', data.from, data.to);
-    socket.to(data.to).emit('offer', {
+    socket.to(data.to).emit("offer", {
       from: data.from,
       offer: data.offer,
-      localStream: data.localStream
+      localStream: data.localStream,
     });
   });
 
-  socket.on('answer', data => {
-    socket.to(data.to).emit('answer', {
+  socket.on("answer", (data) => {
+    socket.to(data.to).emit("answer", {
       from: data.from,
       answer: data.answer,
-      remoteStream: data.remoteStream
+      remoteStream: data.remoteStream,
     });
   });
 
-  socket.on('icecandidate', data => {
-    console.log('ICE candidate received from', data.from);
-    socket.to(data.to).emit('icecandidate', {
+  socket.on("icecandidate", (data) => {
+    // console.log("ICE candidate received from", data.from);
+    socket.to(data.to).emit("icecandidate", {
       from: data.from,
       candidate: data.candidate,
     });
   });
 
-  socket.on('callend', data => {
-    socket.to(data.to).emit('callend', {
+  socket.on("callend", (data) => {
+    socket.to(data.to).emit("callend", {
       state: true,
     });
   });
@@ -156,17 +116,18 @@ io.on("connection", async (socket) => {
     socket.userId = userId;
   });
   socket.on("message", async (obj) => {
-    await WC_Message.create(obj);
-    const allData = await WC_Message.find({});
-    io.emit("message", allData);
+    await JersApp_Message.create(obj);
+    const allData = await JersApp_Message.find({});
+    socket.to(obj.chatID).emit("message", allData);
     io.emit("receivedMsg", obj);
     socket
       .to(obj.receiver)
       .emit("notification", { msg: obj.message, name: obj.name });
 
     const isAdded = await AddContacts({
-      id: obj.receiver,
-      senderID: obj.sender,
+      userID: obj.receiver,
+      id: obj.sender,
+      contact_id: obj.Contact_id,
       msg: { id: obj.sender, msg: obj.message },
     });
     if (!isAdded) {
@@ -183,26 +144,20 @@ io.on("connection", async (socket) => {
         lastMsg: { msg: obj.message, id: obj.receiver },
         count: newMsgs[obj.receiver].length,
       });
-      UpdateMsgCount(
-        { receiverId: obj.receiver },
-        newMsgs[obj.receiver].length
-      );
+      UpdateMsgCount(obj.Contact_id, newMsgs[obj.receiver].length);
     } else {
       newMsgs[obj.receiver].push({ id: obj.receiver, msg: obj.message });
       socket.to(obj.receiver).emit("newMsgs", {
         lastMsg: { msg: obj.message, id: obj.receiver },
         count: newMsgs[obj.receiver].length,
       });
-      UpdateMsgCount(
-        { receiverId: obj.receiver },
-        newMsgs[obj.receiver].length
-      );
+      UpdateMsgCount(obj.Contact_id, newMsgs[obj.receiver].length);
     }
   });
   socket.on("clearNewMsg", ({ id, Contact_id }) => {
     newMsgs[id] = [];
     socket.to(id).emit("newMsgs", { count: 0, lastMsg: "" });
-    UpdateMsgCount({ Contact_id }, "0");
+    UpdateMsgCount(Contact_id, "0");
   });
   socket.on("user_connected", (obj) => {
     const alreadyActiveIndex = activeUsers.findIndex(
@@ -228,13 +183,13 @@ io.on("connection", async (socket) => {
       .emit("user_watching", { isWatching: false, id: obj.id });
   });
   socket.on("user_typing", (obj) => {
-    console.log(obj, "typing");
+    // console.log(obj, "typing");
     socket
       .to(obj.receiverId)
       .emit("user_typing", { isTyping: true, id: obj.id });
   });
   socket.on("user_typed", (obj) => {
-    console.log(obj, "typed");
+    // console.log(obj, "typed");
 
     socket
       .to(obj.receiverId)
@@ -250,10 +205,10 @@ io.on("connection", async (socket) => {
   //*Group
 
   socket.on("send_group_msg", async (obj) => {
-    const newMsg = new WC_grp_message(obj);
+    const newMsg = new JersApp_grp_message(obj);
     const result = await newMsg.save();
     if (result) {
-      const group = await WC_Group.findById(obj.group_id);
+      const group = await JersApp_Group.findById(obj.group_id);
       if (group) {
         group.messages.push(result._id);
         const isAdded = await group.save();

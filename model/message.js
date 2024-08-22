@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const WC_MessageSchema = new mongoose.Schema(
+const JersApp_MessageSchema = new mongoose.Schema(
   {
     chatID: String,
     sender: String,
@@ -10,5 +10,8 @@ const WC_MessageSchema = new mongoose.Schema(
     timestamps: true,
   }
 );
-const WC_Message = mongoose.model("WC_Message", WC_MessageSchema);
-exports.WC_Message = WC_Message;
+const JersApp_Message = mongoose.model(
+  "JersApp_Message",
+  JersApp_MessageSchema
+);
+exports.JersApp_Message = JersApp_Message;

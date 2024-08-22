@@ -1,115 +1,135 @@
-const { WC_Contact } = require("../model/contact");
-const { WC_Auth } = require("../model/users");
+const { JersApp_Contact } = require("../model/contact");
+const { JersApp_Auth } = require("../model/users");
+const { getAllcontacts } = require("../services/contacts");
 
 exports.AddContacts = async (data) => {
-  const { senderID, id, msg } = data;
+  const { userID, id, msg, contact_id } = data;
+
   try {
-    const userData = await WC_Auth.findById(senderID);
-    if (userData) {
-      const allContacts = await WC_Contact.find({
-        user_id: id,
-        Contact_id: userData.mobNum,
+    const user = await JersApp_Auth.findById(userID);
+    const senderData = await JersApp_Auth.findById(id);
+    const allContacts = await getAllcontacts(userID);
+    if (!allContacts || allContacts.length == 0) {
+      const createdContact = await JersApp_Contact.create({
+        given_name: "",
+        user_id: senderData._id,
+        creator_id: user._id,
+        phone: senderData.mobNum,
+        name: senderData.name,
+        lastMsg: msg,
       });
-      if (allContacts.length == 0) {
-        const res = await WC_Contact.create({
-          Contact_id: userData.mobNum,
-          name: userData.name,
-          user_id: id,
-          ContactDetails: { _id: senderID, name: userData.name, image: userData.image },
-          lastMsg: msg,
-          msgCount: 1,
-        });
+      user.contacts.push(createdContact._id);
+
+      if (!user.chats) {
+        user.chats = [];
+      }
+      user.chats.push(createdContact._id);
+
+      await user.save();
+      return true;
+    } else {
+      const contact = allContacts.find((elem) => elem.user_id.toString() == id);
+
+      if (!userID || !contact) return false;
+      const chatIds = user.chats.map((elem) => elem.toString());
+      if (!chatIds.includes(contact._id.toString())) {
+        user.chats.push(contact._id);
+        contact.lastMsg = msg;
+        contact.save();
+        user.save();
         return true;
       } else {
-        console.log({ status: "ok", message: "Contact already there" });
         return false;
       }
-    } else {
-      console.log(res, "added");
-      return true;
     }
   } catch (error) {
-    console.error("Error: ", error);
+    console.log("error at adding contact");
+    return false;
   }
 };
 exports.UpdateLastMsg = async (ID1, ID2, msg) => {
   try {
-    if (ID1 && ID2) {
-      const contact1 = await WC_Contact.findOne({ user_id: ID1 });
-      const contact2 = await WC_Contact.findOne({ user_id: ID2 });
-      if (contact1 && contact2) {
-        const UpdatedContact1 = {
-          Contact_id: contact1.Contact_id,
-          name: contact1.name,
-          user_id: contact1.user_id,
-          ContactDetails: contact1.ContactDetails,
-          lastMsg: msg,
-        };
-        const UpdatedContact2 = {
-          Contact_id: contact2.Contact_id,
-          name: contact2.name,
-          user_id: contact2.user_id,
-          ContactDetails: contact2.ContactDetails,
-          lastMsg: msg,
-        };
-        const contact1Result = await WC_Contact.findByIdAndUpdate(
-          contact1._id,
-          UpdatedContact1
-        );
-        const contact2Result = await WC_Contact.findByIdAndUpdate(
-          contact2._id,
-          UpdatedContact2
-        );
-        if (contact1Result && contact2Result) {
-          console.log({
-            status: "ok",
-            message: "Last Msg Updated successfully",
-          });
-        } else {
-          console.log({
-            status: "error",
-            message: "failed",
-          });
-        }
-      } else {
-        if (!contact1) {
-          console.log({
-            status: "error",
-            message: "contact1 not found",
-          });
-        } else {
-          console.log({
-            status: "error",
-            message: "contact2 not found",
-          });
-        }
-      }
-    } else {
+    if (!ID1 || !ID2) {
       console.log({
         status: "error",
         message: "ID required",
       });
+      return;
+    }
+
+    const auth1 = await JersApp_Auth.findById(ID1).populate("contacts");
+    const auth2 = await JersApp_Auth.findById(ID2).populate("contacts");
+
+    if (!auth1 || !auth2) {
+      console.log({
+        status: "error",
+        message: "One or both users not found",
+      });
+      return;
+    }
+
+    const contact1 = auth1.contacts.find((elem) => elem.user_id == ID2);
+    const contact2 = auth2.contacts.find((elem) => elem.user_id == ID1);
+
+    if (!contact1 || !contact2) {
+      console.log({
+        status: "error",
+        message: !contact1 ? "contact1 not found" : "contact2 not found",
+      });
+      return;
+    }
+
+    const UpdatedContact1 = {
+      ...contact1.toObject(),
+      lastMsg: msg,
+    };
+
+    const UpdatedContact2 = {
+      ...contact2.toObject(),
+      lastMsg: msg,
+    };
+
+    const contact1Result = await JersApp_Contact.findByIdAndUpdate(
+      contact1._id,
+      UpdatedContact1,
+      { new: true }
+    );
+    const contact2Result = await JersApp_Contact.findByIdAndUpdate(
+      contact2._id,
+      UpdatedContact2,
+      { new: true }
+    );
+
+    if (contact1Result && contact2Result) {
+      console.log({
+        status: "ok",
+        message: "Last Msg Updated successfully",
+      });
+    } else {
+      console.log({
+        status: "error",
+        message: "Failed to update one or both contacts",
+      });
     }
   } catch (error) {
-    console.log({ status: "error", message: "something Went wrong" });
+    console.error({
+      status: "error",
+      message: "Something went wrong",
+      error: error.message,
+    });
   }
 };
-exports.UpdateMsgCount = async (ID, count) => {
+
+exports.UpdateMsgCount = async (id, count) => {
   try {
-    if ((ID.Contact_id || ID.receiverId) && count) {
-      const contact = ID.Contact_id
-        ? await WC_Contact.findById(ID.Contact_id)
-        : await WC_Contact.findOne({ user_id: ID.receiverId });
+    if (id && count) {
+      const contact = await JersApp_Contact.findById(id);
       if (contact) {
         const UpdatedContact = {
-          Contact_id: contact.Contact_id,
-          name: contact.name,
-          user_id: contact.user_id,
-          ContactDetails: contact.ContactDetails,
-          lastMsg: contact.lastMsg,
+          ...contact.toObject(),
           msgCount: count,
         };
-        const contactResult = await WC_Contact.findByIdAndUpdate(
+        const contactResult = await JersApp_Contact.findByIdAndUpdate(
           contact._id,
           UpdatedContact
         );
