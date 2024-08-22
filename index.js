@@ -35,43 +35,6 @@ mongoose.connect(db).then(() => {
   console.log("DB Connected");
 });
 
-// const JERS_DB = mongoose.createConnection(JERS_folio_DB);
-
-// Get the default connection
-// const db = mongoose.createConnection(dbURI);
-
-// Event listeners for Mongoose connection
-// db.on("connected", () => {
-//   console.log(`MONGOOSE CONNECTED `);
-// });
-
-// db.on("error", (err) => {
-//   console.error(`Mongoose connection error: ${err}`);
-// });
-
-// db.on("disconnected", () => {
-//   console.log("Mongoose disconnected");
-// });
-// JERS_DB.on("connected", () => {
-//   console.log(`JERS_DB CONNECTED `);
-// });
-
-// JERS_DB.on("error", (err) => {
-//   console.error(`JERS_DB connection error: ${err}`);
-// });
-
-// JERS_DB.on("disconnected", () => {
-//   console.log("JERS_DB disconnected");
-// });
-
-// // Close the Mongoose connection on process termination
-// process.on("SIGINT", () => {
-//   db.close(() => {
-//     console.log("Mongoose connection disconnected through app termination");
-//     process.exit(0);
-//   });
-// });
-
 const PORT = process.env.PORT || 4000;
 httpServer.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
@@ -133,7 +96,7 @@ io.on("connection", async (socket) => {
   });
 
   socket.on("icecandidate", (data) => {
-    console.log("ICE candidate received from", data.from);
+    // console.log("ICE candidate received from", data.from);
     socket.to(data.to).emit("icecandidate", {
       from: data.from,
       candidate: data.candidate,
@@ -155,15 +118,16 @@ io.on("connection", async (socket) => {
   socket.on("message", async (obj) => {
     await JersApp_Message.create(obj);
     const allData = await JersApp_Message.find({});
-    io.emit("message", allData);
+    socket.to(obj.chatID).emit("message", allData);
     io.emit("receivedMsg", obj);
     socket
       .to(obj.receiver)
       .emit("notification", { msg: obj.message, name: obj.name });
 
     const isAdded = await AddContacts({
-      id: obj.receiver,
-      senderID: obj.sender,
+      userID: obj.receiver,
+      id: obj.sender,
+      contact_id: obj.Contact_id,
       msg: { id: obj.sender, msg: obj.message },
     });
     if (!isAdded) {
@@ -180,26 +144,20 @@ io.on("connection", async (socket) => {
         lastMsg: { msg: obj.message, id: obj.receiver },
         count: newMsgs[obj.receiver].length,
       });
-      UpdateMsgCount(
-        { receiverId: obj.receiver },
-        newMsgs[obj.receiver].length
-      );
+      UpdateMsgCount(obj.Contact_id, newMsgs[obj.receiver].length);
     } else {
       newMsgs[obj.receiver].push({ id: obj.receiver, msg: obj.message });
       socket.to(obj.receiver).emit("newMsgs", {
         lastMsg: { msg: obj.message, id: obj.receiver },
         count: newMsgs[obj.receiver].length,
       });
-      UpdateMsgCount(
-        { receiverId: obj.receiver },
-        newMsgs[obj.receiver].length
-      );
+      UpdateMsgCount(obj.Contact_id, newMsgs[obj.receiver].length);
     }
   });
   socket.on("clearNewMsg", ({ id, Contact_id }) => {
     newMsgs[id] = [];
     socket.to(id).emit("newMsgs", { count: 0, lastMsg: "" });
-    UpdateMsgCount({ Contact_id }, "0");
+    UpdateMsgCount(Contact_id, "0");
   });
   socket.on("user_connected", (obj) => {
     const alreadyActiveIndex = activeUsers.findIndex(
@@ -225,13 +183,13 @@ io.on("connection", async (socket) => {
       .emit("user_watching", { isWatching: false, id: obj.id });
   });
   socket.on("user_typing", (obj) => {
-    console.log(obj, "typing");
+    // console.log(obj, "typing");
     socket
       .to(obj.receiverId)
       .emit("user_typing", { isTyping: true, id: obj.id });
   });
   socket.on("user_typed", (obj) => {
-    console.log(obj, "typed");
+    // console.log(obj, "typed");
 
     socket
       .to(obj.receiverId)

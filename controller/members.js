@@ -157,7 +157,6 @@ exports.AddMembersToGroup = async (data) => {
                       const IsGroupLinked = await UserData.save();
                       if (IsGroupLinked) {
                         const isAdded = await Group.save();
-                        console.log(isAdded, "test");
 
                         if (isAdded) {
                           return { status: "ok", message: "User added" };
