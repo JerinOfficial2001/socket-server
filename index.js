@@ -112,6 +112,10 @@ io.on("connection", async (socket) => {
   socket.on("roomID", (id) => {
     socket.join(id);
   });
+  socket.on("webAuthToken", (obj) => {
+    // socket.join(id);
+    io.to(obj.id).emit("webAuthToken", obj.token);
+  });
   socket.on("set_user_id", (userId) => {
     socket.userId = userId;
   });
@@ -135,6 +139,8 @@ io.on("connection", async (socket) => {
         id: obj.sender,
         msg: obj.message,
       });
+    } else {
+      socket.to(obj.receiver).emit("Contact", true);
     }
 
     if (!newMsgs[obj.receiver]) {
@@ -270,7 +276,6 @@ io.on("connection", async (socket) => {
       groupID: obj.groupID,
     });
   });
-
   socket.on("disconnect", () => {
     console.log("User Disconnected");
     const disconnectedUserId = socket.userId;

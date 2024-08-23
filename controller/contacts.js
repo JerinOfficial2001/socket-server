@@ -8,7 +8,8 @@ exports.AddContacts = async (data) => {
   try {
     const user = await JersApp_Auth.findById(userID);
     const senderData = await JersApp_Auth.findById(id);
-    const allContacts = await getAllcontacts(userID);
+    const allContacts = await getAllcontacts(userID, id);
+    console.log(allContacts);
     if (!allContacts || allContacts.length == 0) {
       const createdContact = await JersApp_Contact.create({
         given_name: "",
