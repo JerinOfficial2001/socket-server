@@ -113,14 +113,19 @@ io.on("connection", async (socket) => {
     socket.join(id);
   });
   socket.on("webAuthToken", (obj) => {
-    // socket.join(id);
     io.to(obj.id).emit("webAuthToken", obj.token);
   });
   socket.on("set_user_id", (userId) => {
     socket.userId = userId;
   });
   socket.on("message", async (obj) => {
-    await JersApp_Message.create(obj);
+    console.log("test", obj);
+    // await JersApp_Message.create({
+    //   chatID: obj.chatID,
+    //   sender: obj.sender,
+    //   receiver: obj.receiver,
+    //   message: obj.message,
+    // });
     const allData = await JersApp_Message.find({});
     socket.to(obj.chatID).emit("message", allData);
     io.emit("receivedMsg", obj);
