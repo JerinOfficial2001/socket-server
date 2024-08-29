@@ -113,6 +113,7 @@ io.on("connection", async (socket) => {
     socket.join(id);
   });
   socket.on("webAuthToken", (obj) => {
+    console.log(obj);
     io.to(obj.id).emit("webAuthToken", obj.token);
   });
   socket.on("set_user_id", (userId) => {
@@ -216,23 +217,31 @@ io.on("connection", async (socket) => {
   //*Group
 
   socket.on("send_group_msg", async (obj) => {
-    const newMsg = new JersApp_grp_message(obj);
-    const result = await newMsg.save();
-    if (result) {
-      const group = await JersApp_Group.findById(obj.group_id);
-      if (group) {
-        group.messages.push(result._id);
-        const isAdded = await group.save();
-        if (isAdded) {
-          socket.to(obj.group_id).emit("new_group_msg", obj);
+    try {
+      const newMsg = new JersApp_grp_message({
+        group_id: obj.group_id,
+        sender_id: obj.sender_id,
+        msg: obj.msg,
+      });
+      const result = await newMsg.save();
+      if (result) {
+        const group = await JersApp_Group.findById(obj.group_id);
+        if (group) {
+          group.messages.push(result._id);
+          const isAdded = await group.save();
+          if (isAdded) {
+            socket.to(obj.group_id).emit("new_group_msg", obj);
+          } else {
+            console.log({ status: "error", message: "Group msg failed" });
+          }
         } else {
-          console.log({ status: "error", message: "Group msg failed" });
+          console.log({ status: "error", message: "Group not found" });
         }
       } else {
-        console.log({ status: "error", message: "Group not found" });
+        console.log({ status: "error", message: "Something went wrong" });
       }
-    } else {
-      console.log({ status: "error", message: "Something went wrong" });
+    } catch (error) {
+      console.log("sendGrpMsg", error);
     }
   });
   socket.on("join_group", (obj) => {
