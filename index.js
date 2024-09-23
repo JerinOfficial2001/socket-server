@@ -64,6 +64,7 @@ let activeUsers = [];
 let rooms = {};
 let newMsgs = {};
 let usersInGroup = {};
+let webSessions = {};
 //*JersApp
 io.on("connection", async (socket) => {
   const groups = await JersApp_Group.find({});
@@ -114,7 +115,27 @@ io.on("connection", async (socket) => {
   });
   socket.on("webAuthToken", (obj) => {
     console.log(obj);
-    io.to(obj.id).emit("webAuthToken", obj.token);
+    io.to(obj.id).emit("webAuthToken", obj);
+  });
+  socket.on("authenticated", (obj) => {
+    if (!webSessions[obj.userID]) {
+      webSessions[obj.userID] = [];
+      webSessions[obj.userID].push(obj.session_data);
+    } else {
+      webSessions[obj.userID].push(obj.session_data);
+    }
+    io.to(obj.id).emit("authenticated", webSessions[obj.userID]);
+  });
+  socket.on("webAuthLogout", (obj) => {
+    if (!webSessions[obj.userID]) {
+      webSessions[obj.userID] = [];
+    } else {
+      const filteredArr = webSessions[obj.userID].filter(
+        (elem) => elem != obj.id
+      );
+      webSessions[obj.userID] = filteredArr;
+    }
+    io.to(obj.id).emit("authenticated", webSessions[obj.userID]);
   });
   socket.on("set_user_id", (userId) => {
     socket.userId = userId;
