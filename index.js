@@ -131,7 +131,7 @@ io.on("connection", async (socket) => {
       webSessions[obj.userID] = [];
     } else {
       const filteredArr = webSessions[obj.userID].filter(
-        (elem) => elem != obj.id
+        (elem) => elem.socket_id != obj.socket_id
       );
       webSessions[obj.userID] = filteredArr;
     }
